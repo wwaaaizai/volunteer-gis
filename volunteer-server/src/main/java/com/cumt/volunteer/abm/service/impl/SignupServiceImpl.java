@@ -1,0 +1,88 @@
+package com.cumt.volunteer.abm.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cumt.volunteer.abm.mapper.SignupMapper;
+import com.cumt.volunteer.abm.service.SignupService;
+import com.cumt.volunteer.aca.mapper.ActivityMapper;
+import com.cumt.volunteer.entity.Activity;
+import com.cumt.volunteer.entity.Signup;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class SignupServiceImpl extends ServiceImpl<SignupMapper, Signup> implements SignupService {
+
+    private final ActivityMapper activityMapper;
+
+    @Override
+    @Transactional
+    public void signup(Long activityId, Long userId) {
+        Activity activity = activityMapper.selectById(activityId);
+        if (activity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        if (!"published".equals(activity.getStatus())) {
+            throw new RuntimeException("活动未开放报名");
+        }
+        if (activity.getSignedCount() >= activity.getMaxParticipants()) {
+            throw new RuntimeException("报名已满");
+        }
+        // 检查是否已报名
+        Long count = baseMapper.selectCount(new LambdaQueryWrapper<Signup>()
+                .eq(Signup::getActivityId, activityId)
+                .eq(Signup::getUserId, userId));
+        if (count > 0) {
+            throw new RuntimeException("已报名该活动");
+        }
+        // 创建报名记录
+        Signup signup = new Signup();
+        signup.setActivityId(activityId);
+        signup.setUserId(userId);
+        signup.setStatus("signed");
+        signup.setCreatedAt(LocalDateTime.now());
+        save(signup);
+
+        // 更新已报名人数
+        activity.setSignedCount(activity.getSignedCount() + 1);
+        activityMapper.updateById(activity);
+    }
+
+    @Override
+    @Transactional
+    public void cancelSignup(Long activityId, Long userId) {
+        Signup signup = baseMapper.selectOne(new LambdaQueryWrapper<Signup>()
+                .eq(Signup::getActivityId, activityId)
+                .eq(Signup::getUserId, userId)
+                .eq(Signup::getStatus, "signed"));
+        if (signup == null) {
+            throw new RuntimeException("未找到报名记录");
+        }
+        signup.setStatus("cancelled");
+        updateById(signup);
+
+        Activity activity = activityMapper.selectById(activityId);
+        if (activity != null && activity.getSignedCount() > 0) {
+            activity.setSignedCount(activity.getSignedCount() - 1);
+            activityMapper.updateById(activity);
+        }
+    }
+
+    @Override
+    public List<Signup> getMySignups(Long userId) {
+        return list(new LambdaQueryWrapper<Signup>()
+                .eq(Signup::getUserId, userId)
+                .orderByDesc(Signup::getCreatedAt));
+    }
+
+    @Override
+    public List<Signup> getActivitySignups(Long activityId) {
+        return list(new LambdaQueryWrapper<Signup>()
+                .eq(Signup::getActivityId, activityId));
+    }
+}

@@ -1,0 +1,90 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+
+const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { guest: true },
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/Register.vue'),
+    meta: { guest: true },
+  },
+  {
+    path: '/',
+    component: () => import('@/views/Layout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Map',
+        component: () => import('@/views/Map.vue'),
+        meta: { title: '活动地图' },
+      },
+      {
+        path: 'activity/:id',
+        name: 'ActivityDetail',
+        component: () => import('@/views/ActivityDetail.vue'),
+        meta: { title: '活动详情' },
+      },
+      {
+        path: 'my-signups',
+        name: 'MySignups',
+        component: () => import('@/views/MySignups.vue'),
+        meta: { title: '我的报名' },
+      },
+      {
+        path: 'checkin',
+        name: 'CheckIn',
+        component: () => import('@/views/CheckIn.vue'),
+        meta: { title: '签到' },
+      },
+      {
+        path: 'admin',
+        name: 'Admin',
+        component: () => import('@/views/Admin.vue'),
+        meta: { title: '管理员后台', role: 'admin' },
+      },
+      {
+        path: 'admin/create-activity',
+        name: 'CreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', role: 'admin' },
+      },
+    ],
+  },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
+// 路由守卫
+router.beforeEach(async (to, _from, next) => {
+  const userStore = useUserStore()
+
+  // 先尝试获取用户信息
+  if (userStore.token && !userStore.user) {
+    await userStore.fetchUser()
+  }
+
+  // 需要管理员权限
+  if (to.meta.role === 'admin') {
+    if (!userStore.user || userStore.user.role !== 'admin') {
+      return next('/')
+    }
+  }
+
+  // 已登录用户访问登录/注册页 → 重定向到首页
+  if (to.meta.guest && userStore.user) {
+    return next('/')
+  }
+
+  next()
+})
+
+export default router

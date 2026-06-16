@@ -1,0 +1,36 @@
+# Java
+volunteer-server/target/
+*.class
+*.jar
+*.war
+
+# 注意：以下 Maven Wrapper 文件必须提交入库，供团队开箱即用
+#   volunteer-server/mvnw 、mvnw.cmd 、.mvn/wrapper/maven-wrapper.properties
+# 它们让团队成员无需全局安装 Maven 即可构建后端。
+
+# Node
+volunteer-web/node_modules/
+volunteer-web/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Uploads
+uploads/
+
+# Logs
+*.log
+logs/
