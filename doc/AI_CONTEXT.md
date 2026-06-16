@@ -242,7 +242,8 @@ npm run dev
 | 文件 | 定位 |
 |------|------|
 | `volunteer-server/pom.xml` | Maven 依赖 |
-| `volunteer-server/src/main/resources/application.yml` | 后端配置（支持 ${ENV} 占位） |
+| `volunteer-server/src/main/resources/application.yml` | 后端配置（支持 ${ENV} 占位，时区 Asia/Shanghai） |
+| `volunteer-server/src/main/java/.../config/MybatisPlusMetaObjectHandler.java` | MyBatis-Plus 自动填充（createdAt / updatedAt） |
 | `volunteer-server/src/main/resources/db/init.sql` | 数据库 DDL |
 | `volunteer-server/src/main/java/.../geo/model/` | GeoPoint, FeatureCollection, Feature, Geometry POJO |
 | `volunteer-server/src/main/java/.../geo/service/SpatialCalculator.java` | Haversine 距离计算 |
