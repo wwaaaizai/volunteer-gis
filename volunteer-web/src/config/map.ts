@@ -1,4 +1,5 @@
 import type { StyleSpecification } from 'maplibre-gl'
+import { wgs84ToGcj02 } from '@/utils/coordConvert'
 
 /**
  * 地图集中配置。
@@ -8,10 +9,15 @@ import type { StyleSpecification } from 'maplibre-gl'
  *
  * <p><b>配置外置</b>：天地图 Key 通过 Vite 环境变量 {@code VITE_TIANDITU_KEY} 注入，
  * 见 {@code .env / .env.example}。</p>
+ *
+ * <p><b>坐标说明</b>：数据库存储 WGS-84，地图显示时转为 GCJ-02 对齐天地图底图。</p>
  */
 
-/** 中国矿业大学（南湖校区）中心坐标 [经度, 纬度] */
-export const DEFAULT_CENTER: [number, number] = [117.2050, 34.2173]
+// WGS-84 原始坐标（中国矿业大学南湖校区中心）
+const WGS84_CENTER: [number, number] = [117.2050, 34.2173]
+
+/** 中国矿业大学（南湖校区）中心坐标（已转为 GCJ-02） */
+export const DEFAULT_CENTER: [number, number] = wgs84ToGcj02(...WGS84_CENTER)
 
 /** 默认缩放级别 */
 export const DEFAULT_ZOOM = 14
