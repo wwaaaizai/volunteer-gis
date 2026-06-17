@@ -27,16 +27,25 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
 
   function init() {
     if (!container.value) return
-    const instance = new maplibregl.Map({
-      container: container.value,
-      style: buildTiandituStyle(),
-      center: options.center ?? DEFAULT_CENTER,
-      zoom: options.zoom ?? DEFAULT_ZOOM,
-    })
-    instance.on('load', () => {
-      mapReady.value = true
-    })
-    map.value = instance
+    try {
+      const instance = new maplibregl.Map({
+        container: container.value,
+        style: buildTiandituStyle(),
+        center: options.center ?? DEFAULT_CENTER,
+        zoom: options.zoom ?? DEFAULT_ZOOM,
+      })
+      instance.on('load', () => {
+        mapReady.value = true
+      })
+      // 瓦片加载失败不崩溃
+      instance.on('error', (e) => {
+        console.warn('地图瓦片加载失败（可能需要有效的天地图 Key）:', e.error?.message ?? e)
+      })
+      map.value = instance
+    } catch (e) {
+      console.error('地图初始化失败，请检查天地图 Key 是否有效')
+      console.error(e)
+    }
   }
 
   function destroy() {
