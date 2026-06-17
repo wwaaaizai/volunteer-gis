@@ -14,7 +14,7 @@ import type { StyleSpecification } from 'maplibre-gl'
 export const DEFAULT_CENTER: [number, number] = [117.2050, 34.2173]
 
 /** 默认缩放级别 */
-export const DEFAULT_ZOOM = 15
+export const DEFAULT_ZOOM = 14
 
 /** 天地图 API Key（从环境变量读取，占位兜底为空） */
 export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''

@@ -34,8 +34,21 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
         center: options.center ?? DEFAULT_CENTER,
         zoom: options.zoom ?? DEFAULT_ZOOM,
       })
+      // 添加缩放控件和定位按钮
+      instance.addControl(new maplibregl.NavigationControl(), 'top-right')
+      instance.addControl(new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showUserHeading: true,
+      }), 'top-right')
       instance.on('load', () => {
         mapReady.value = true
+        // 加载完成后飞向矿大南湖校区
+        instance.flyTo({
+          center: options.center ?? DEFAULT_CENTER,
+          zoom: options.zoom ?? DEFAULT_ZOOM,
+          duration: 0,
+        })
       })
       // 瓦片加载失败不崩溃
       instance.on('error', (e) => {
