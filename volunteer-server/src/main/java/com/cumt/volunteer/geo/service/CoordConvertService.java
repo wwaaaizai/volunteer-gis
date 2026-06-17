@@ -63,7 +63,9 @@ public class CoordConvertService {
      * GeoPoint WGS-84 → GCJ-02 便捷方法
      */
     public GeoPoint wgs84ToGcj02(GeoPoint point) {
-        double[] result = wgs84ToGcj02(point.longitude(), point.latitude());
+        double[] result = wgs84ToGcj02(
+                point.longitude().doubleValue(),
+                point.latitude().doubleValue());
         return GeoPoint.of(result[0], result[1]);
     }
 }
