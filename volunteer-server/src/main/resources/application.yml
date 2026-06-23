@@ -10,7 +10,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/volunteer_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: ${MYSQL_PASSWORD:JXhjz@22}
+    password: ${MYSQL_PASSWORD:Cumt123} (fix: 移除application.yml中占位符，改用直接值避免解析失败)
   servlet:
     multipart:
       max-file-size: 10MB
