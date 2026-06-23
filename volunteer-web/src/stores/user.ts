@@ -6,6 +6,9 @@ export interface UserInfo {
   userId: string
   studentId: string
   role: string
+  name?: string
+  phone?: string
+  organization?: string
 }
 
 export const useUserStore = defineStore('user', () => {

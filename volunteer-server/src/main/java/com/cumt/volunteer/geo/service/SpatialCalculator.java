@@ -11,6 +11,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class SpatialCalculator {
 
+    /** 矿大南湖校区 WGS-84 边界框（西北角+东南角） */
+    private static final double CAMPUS_LNG_MIN = 117.1950;
+    private static final double CAMPUS_LNG_MAX = 117.2150;
+    private static final double CAMPUS_LAT_MIN = 34.2100;
+    private static final double CAMPUS_LAT_MAX = 34.2240;
+
     /** 地球平均半径（米） */
     private static final double EARTH_RADIUS_METERS = 6_371_000;
 
@@ -36,6 +42,18 @@ public class SpatialCalculator {
      */
     public boolean isWithin(GeoPoint a, GeoPoint b, double radiusMeters) {
         return distanceMeters(a, b) <= radiusMeters;
+    }
+
+    /**
+     * 校验坐标是否在矿大南湖校区边界框内（P2-AM-15）。
+     *
+     * @param lng 经度（WGS-84）
+     * @param lat 纬度（WGS-84）
+     * @return true 表示在校区范围内
+     */
+    public boolean isWithinCampus(double lng, double lat) {
+        return lng >= CAMPUS_LNG_MIN && lng <= CAMPUS_LNG_MAX
+                && lat >= CAMPUS_LAT_MIN && lat <= CAMPUS_LAT_MAX;
     }
 
     /**

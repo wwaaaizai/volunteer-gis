@@ -29,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         initAdmin();
         initStudent();
+        initOrganizer();
         initDemoActivities();
     }
 
@@ -59,6 +60,22 @@ public class DataInitializer implements CommandLineRunner {
             student.setTotalHours(BigDecimal.ZERO);
             userMapper.insert(student);
             log.info("学生测试账号已创建: student / 123456");
+        }
+    }
+
+    private void initOrganizer() {
+        User exist = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getStudentId, "organizer"));
+        if (exist == null) {
+            User organizer = new User();
+            organizer.setStudentId("organizer");
+            organizer.setPassword(passwordEncoder.encode("organizer123"));
+            organizer.setName("李组织者");
+            organizer.setRole("organizer");
+            organizer.setOrganization("校团委");
+            organizer.setTotalHours(BigDecimal.ZERO);
+            userMapper.insert(organizer);
+            log.info("组织者测试账号已创建: organizer / organizer123");
         }
     }
 

@@ -25,7 +25,34 @@
         </el-table>
       </el-tab-pane>
 
-      <!-- ========== Tab 2: 时长审核 ========== -->
+      <!-- ========== Tab 2: 组织者审批（P2-UPM-04） ========== -->
+      <el-tab-pane label="组织者审批" name="organizer">
+        <el-table :data="applies" v-loading="loadingApplies">
+          <el-table-column prop="id" label="申请ID" width="80" />
+          <el-table-column prop="userId" label="用户ID" width="80" />
+          <el-table-column prop="organization" label="所属机构" width="150" />
+          <el-table-column prop="reason" label="申请理由" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'pending' ? 'warning' : row.status === 'approved' ? 'success' : 'danger'">
+                {{ row.status === 'pending' ? '待审批' : row.status === 'approved' ? '已通过' : '已拒绝' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="200">
+            <template #default="{ row }">
+              <template v-if="row.status === 'pending'">
+                <el-button size="small" type="success" @click="reviewApply(row.id, true)">通过</el-button>
+                <el-button size="small" type="danger" @click="reviewApply(row.id, false)">拒绝</el-button>
+              </template>
+              <span v-else style="color: #999">已处理</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="applies.length === 0 && !loadingApplies" description="暂无待审批的组织者申请" />
+      </el-tab-pane>
+
+      <!-- ========== Tab 3: 时长审核 ========== -->
       <el-tab-pane label="时长审核" name="hours">
         <div class="verify-section">
           <!-- 第一步：选择活动 -->
@@ -88,13 +115,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
 
 const activeTab = ref('activities')
 const activities = ref<any[]>([])
 const loading = ref(true)
+
+// ===== 组织者审批（P2-UPM-04） =====
+const applies = ref<any[]>([])
+const loadingApplies = ref(false)
+
+async function loadApplies() {
+  loadingApplies.value = true
+  try {
+    applies.value = await request.get('/auth/organizer-applies')
+  } catch {
+    applies.value = []
+  } finally {
+    loadingApplies.value = false
+  }
+}
+
+async function reviewApply(applyId: number, approved: boolean) {
+  try {
+    await request.put(`/auth/organizer-applies/${applyId}/review`, { approved })
+    ElMessage.success(approved ? '已通过' : '已拒绝')
+    loadApplies()
+  } catch {
+    // 错误已在拦截器中提示
+  }
+}
+
+// 切换到组织者审批 Tab 时自动加载
+import { watch } from 'vue'
+watch(activeTab, (tab) => {
+  if (tab === 'organizer') loadApplies()
+})
 
 // ===== 活动管理 =====
 async function loadActivities() {

@@ -15,6 +15,23 @@
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码（至少6位）" size="large" />
         </el-form-item>
+
+        <!-- 组织者申请（P2-UPM-03） -->
+        <el-divider />
+        <el-form-item>
+          <el-checkbox v-model="form.applyOrganizer">
+            申请成为活动组织者
+          </el-checkbox>
+        </el-form-item>
+        <template v-if="form.applyOrganizer">
+          <el-form-item prop="organization">
+            <el-input v-model="form.organization" placeholder="所属机构（如：校团委、学生会）" size="large" />
+          </el-form-item>
+          <el-form-item prop="employeeId">
+            <el-input v-model="form.employeeId" placeholder="工号/编号" size="large" />
+          </el-form-item>
+        </template>
+
         <el-form-item>
           <el-button type="primary" size="large" style="width: 100%" @click="handleRegister" :loading="loading">
             注册
@@ -44,6 +61,9 @@ const form = reactive({
   name: '',
   phone: '',
   password: '',
+  applyOrganizer: false,
+  organization: '',
+  employeeId: '',
 })
 
 const rules = {
@@ -54,6 +74,8 @@ const rules = {
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码至少6位', trigger: 'blur' },
   ],
+  organization: [{ required: true, message: '请输入所属机构', trigger: 'blur' }],
+  employeeId: [{ required: true, message: '请输入工号', trigger: 'blur' }],
 }
 
 async function handleRegister() {
@@ -62,7 +84,9 @@ async function handleRegister() {
   loading.value = true
   try {
     await request.post('/auth/register', { ...form })
-    ElMessage.success('注册成功，请登录')
+    ElMessage.success(form.applyOrganizer
+      ? '注册成功！组织者申请已提交，请等待管理员审批'
+      : '注册成功，请登录')
     router.push('/login')
   } catch {
     // 错误已在拦截器中提示
@@ -81,7 +105,7 @@ async function handleRegister() {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 .register-card {
-  width: 420px;
+  width: 460px;
 }
 .register-card h2 {
   text-align: center;

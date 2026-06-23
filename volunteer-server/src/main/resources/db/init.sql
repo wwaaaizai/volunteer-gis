@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS `user` (
     password    VARCHAR(255) NOT NULL           COMMENT '密码（bcrypt）',
     name        VARCHAR(64)  NOT NULL           COMMENT '姓名',
     phone       VARCHAR(16)                     COMMENT '手机号',
-    role        VARCHAR(16)  NOT NULL DEFAULT 'student' COMMENT '角色：student/admin',
+    role        VARCHAR(16)  NOT NULL DEFAULT 'student' COMMENT '角色：student/organizer/admin',
+    organization VARCHAR(64)                    COMMENT '所属机构（组织者填写）',
+    employee_id VARCHAR(32)                     COMMENT '工号（组织者填写）',
     total_hours DECIMAL(8,1) NOT NULL DEFAULT 0 COMMENT '累计志愿时长',
     deleted     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '逻辑删除',
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -91,3 +93,33 @@ CREATE TABLE IF NOT EXISTS `message` (
     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_read (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='站内信表';
+
+-- -------------------------------------------
+-- 5. 组织者申请表（P2-UPM-04）
+-- -------------------------------------------
+CREATE TABLE IF NOT EXISTS `organizer_apply` (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id     BIGINT        NOT NULL              COMMENT '申请人用户ID',
+    organization VARCHAR(64)                        COMMENT '所属机构',
+    reason      TEXT                                COMMENT '申请理由',
+    status      VARCHAR(16)   NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
+    reviewed_by BIGINT                              COMMENT '审核管理员ID',
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织者申请表';
+
+-- -------------------------------------------
+-- 6. 操作日志表（P2-UPM-07）
+-- -------------------------------------------
+CREATE TABLE IF NOT EXISTS `operation_log` (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id         BIGINT        NOT NULL          COMMENT '操作者用户ID',
+    operation_type  VARCHAR(32)                     COMMENT '操作类型：create_activity/edit_activity/publish_activity',
+    description     VARCHAR(255)                    COMMENT '操作描述',
+    activity_id     BIGINT                          COMMENT '关联活动ID',
+    created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
