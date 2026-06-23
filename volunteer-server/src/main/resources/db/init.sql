@@ -126,3 +126,16 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     INDEX idx_user (user_id),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- -------------------------------------------
+-- Phase 2 ACA 增量迁移：activity 表新增字段
+-- -------------------------------------------
+ALTER TABLE activity
+  ADD COLUMN IF NOT EXISTS organizer_id BIGINT COMMENT '组织者ID' AFTER creator_id,
+  ADD COLUMN IF NOT EXISTS category VARCHAR(32) COMMENT '活动分类' AFTER organizer_id,
+  ADD COLUMN IF NOT EXISTS tags VARCHAR(255) COMMENT '活动标签，逗号分隔' AFTER category;
+
+-- 为已有活动补全新增字段默认值
+UPDATE activity SET organizer_id = creator_id WHERE organizer_id IS NULL;
+UPDATE activity SET category = '' WHERE category IS NULL;
+UPDATE activity SET tags = '' WHERE tags IS NULL; (fix: 后端联调准备 — DataInitializer增加organizer账号 + init.sql增量迁移 + 演示活动补全新字段)
