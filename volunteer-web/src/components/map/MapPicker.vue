@@ -1,7 +1,8 @@
 <template>
   <div class="map-picker">
     <div class="map-picker-hint" v-if="!pickedLng || !pickedLat">
-      📍 点击地图选择活动位置
+      <span v-if="!mapReady">🗺️ 地图加载中...</span>
+      <span v-else>📍 点击地图选择活动位置</span>
     </div>
     <BaseMap ref="baseMapRef" class="picker-map" />
     <!-- 已选坐标 -->
@@ -14,15 +15,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, unref, onMounted } from 'vue'
 import type { Map } from 'maplibre-gl'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coordConvert'
 import BaseMap from '@/components/map/BaseMap.vue'
 
 const props = defineProps<{
-  /** WGS-84 初始经度（编辑模式回填） */
   modelLng?: number
-  /** WGS-84 初始纬度（编辑模式回填） */
   modelLat?: number
 }>()
 
@@ -33,38 +32,60 @@ const emit = defineEmits<{
 const baseMapRef = ref<InstanceType<typeof BaseMap>>()
 const pickedLng = ref<number | null>(props.modelLng ?? null)
 const pickedLat = ref<number | null>(props.modelLat ?? null)
+const mapReady = ref(false)
 
 const MARKER_SOURCE = 'picker-point'
 const MARKER_LAYER = 'picker-marker'
 
-/** 地图就绪后绑定点击事件 + 回填已有坐标 */
-watch(
-  () => baseMapRef.value?.mapReady,
-  (ready) => {
-    if (!ready) return
-    const map = baseMapRef.value?.map as Map | null
-    if (!map) return
+/** 获取 map 实例（兼容 defineExpose 不会自动解包 ref 的情况） */
+function getMap(): Map | null {
+  const comp = baseMapRef.value
+  if (!comp) return null
+  // unref 兼容 ref 和普通值
+  return (unref(comp.map) as Map | null) ?? null
+}
 
-    // 点击地图选点
-    map.on('click', (e) => {
-      // 地图上点击得到的坐标是 GCJ-02（天地图底图），转为 WGS-84 存储
-      const wgs = gcj02ToWgs84(e.lngLat.lng, e.lngLat.lat)
-      pickedLng.value = wgs[0]
-      pickedLat.value = wgs[1]
-      emit('update', wgs[0], wgs[1])
-      // 添加或更新标记
-      updateMarker(map, e.lngLat.lng, e.lngLat.lat)
-    })
+function getMapReady(): boolean {
+  const comp = baseMapRef.value
+  if (!comp) return false
+  return (unref(comp.mapReady) as boolean) ?? false
+}
 
-    // 如果有初始坐标，在地图上显示标记
-    if (props.modelLng && props.modelLat) {
-      const gcj = wgs84ToGcj02(props.modelLng, props.modelLat)
-      updateMarker(map, gcj[0], gcj[1])
+/** 轮询等待地图就绪（避开 defineExpose ref 解包问题） */
+function waitForMap(): Promise<Map> {
+  return new Promise((resolve) => {
+    const check = () => {
+      const m = getMap()
+      if (m && getMapReady()) {
+        resolve(m)
+      } else {
+        setTimeout(check, 200)
+      }
     }
-  }
-)
+    check()
+  })
+}
 
-/** 在地图上显示/移动标记点 */
+/** 绑定点击选点 */
+function bindClick(map: Map) {
+  map.on('click', (e) => {
+    const wgs = gcj02ToWgs84(e.lngLat.lng, e.lngLat.lat)
+    pickedLng.value = wgs[0]
+    pickedLat.value = wgs[1]
+    emit('update', wgs[0], wgs[1])
+    updateMarker(map, e.lngLat.lng, e.lngLat.lat)
+  })
+
+  // 光标样式
+  map.on('mouseenter', MARKER_LAYER, () => {
+    map.getCanvas().style.cursor = 'pointer'
+  })
+  map.on('mouseleave', MARKER_LAYER, () => {
+    map.getCanvas().style.cursor = ''
+  })
+}
+
+/** 在地图上显示标记点 */
 function updateMarker(map: Map, lng: number, lat: number) {
   const geojson = {
     type: 'FeatureCollection' as const,
@@ -92,11 +113,10 @@ function updateMarker(map: Map, lng: number, lat: number) {
   }
 }
 
-/** 清除已选点 */
 function clearPick() {
   pickedLng.value = null
   pickedLat.value = null
-  const map = baseMapRef.value?.map as Map | null
+  const map = getMap()
   if (map && map.getSource(MARKER_SOURCE)) {
     ;(map.getSource(MARKER_SOURCE) as any).setData({
       type: 'FeatureCollection',
@@ -105,7 +125,18 @@ function clearPick() {
   }
 }
 
-/** 暴露当前 WGS-84 坐标供父组件读取 */
+onMounted(async () => {
+  const map = await waitForMap()
+  mapReady.value = true
+  bindClick(map)
+
+  // 编辑模式回填已有坐标
+  if (props.modelLng && props.modelLat) {
+    const gcj = wgs84ToGcj02(props.modelLng, props.modelLat)
+    updateMarker(map, gcj[0], gcj[1])
+  }
+})
+
 defineExpose({ pickedLng, pickedLat })
 </script>
 
@@ -122,11 +153,12 @@ defineExpose({ pickedLng, pickedLat })
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 13px;
-  color: #909399;
+  color: #606266;
+  white-space: nowrap;
   pointer-events: none;
 }
 .picker-map {
