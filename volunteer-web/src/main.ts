@@ -9,11 +9,20 @@ import router from './router'
 
 async function bootstrap() {
   // Mock 启用：由 .env.development / .env.local 中 VITE_USE_MOCK 控制
-  // MSW 在 Service Worker 层拦截 /api/*，此时 vite proxy 不会被触发
-  // 设为 false 即恢复连接真实后端 http://localhost:8080
   if (import.meta.env.VITE_USE_MOCK === 'true') {
     const { worker } = await import('./mock/browser')
     await worker.start({ onUnhandledRequest: 'bypass' })
+  } else {
+    // 非 Mock 模式：主动清除上一次 Mock 模式残留的 Service Worker
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      for (const reg of registrations) {
+        if (reg.active?.scriptURL.includes('mockServiceWorker')) {
+          await reg.unregister()
+          console.log('已注销旧 Mock Service Worker')
+        }
+      }
+    }
   }
 
   const app = createApp(App)
