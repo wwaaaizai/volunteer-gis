@@ -1,11 +1,12 @@
 <template>
   <div class="map-picker">
-    <div class="map-picker-hint" v-if="!pickedLng || !pickedLat">
-      <span v-if="!mapReady">🗺️ 地图加载中...</span>
-      <span v-else>📍 点击地图选择活动位置</span>
+    <div class="map-picker-hint" v-if="loading">
+      🗺️ 地图加载中...
     </div>
-    <BaseMap ref="baseMapRef" class="picker-map" />
-    <!-- 已选坐标 -->
+    <div class="map-picker-hint" v-else-if="!pickedLng || !pickedLat">
+      📍 点击地图选择活动位置
+    </div>
+    <div ref="mapEl" class="picker-map"></div>
     <div class="picked-coords" v-if="pickedLng && pickedLat">
       <el-tag type="success" closable @close="clearPick">
         已选：{{ pickedLng.toFixed(6) }}, {{ pickedLat.toFixed(6) }}
@@ -15,10 +16,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, unref, onMounted } from 'vue'
-import type { Map } from 'maplibre-gl'
+import { ref, onMounted, onUnmounted } from 'vue'
+import maplibregl from 'maplibre-gl'
+import { buildTiandituStyle, DEFAULT_CENTER, DEFAULT_ZOOM } from '@/config/map'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coordConvert'
-import BaseMap from '@/components/map/BaseMap.vue'
 
 const props = defineProps<{
   modelLng?: number
@@ -29,64 +30,18 @@ const emit = defineEmits<{
   (e: 'update', lng: number, lat: number): void
 }>()
 
-const baseMapRef = ref<InstanceType<typeof BaseMap>>()
+const mapEl = ref<HTMLElement>()
 const pickedLng = ref<number | null>(props.modelLng ?? null)
 const pickedLat = ref<number | null>(props.modelLat ?? null)
-const mapReady = ref(false)
+const loading = ref(true)
 
-const MARKER_SOURCE = 'picker-point'
-const MARKER_LAYER = 'picker-marker'
+let map: maplibregl.Map | null = null
+const SOURCE_ID = 'picker-point'
+const LAYER_ID = 'picker-marker'
 
-/** 获取 map 实例（兼容 defineExpose 不会自动解包 ref 的情况） */
-function getMap(): Map | null {
-  const comp = baseMapRef.value
-  if (!comp) return null
-  // unref 兼容 ref 和普通值
-  return (unref(comp.map) as Map | null) ?? null
-}
-
-function getMapReady(): boolean {
-  const comp = baseMapRef.value
-  if (!comp) return false
-  return (unref(comp.mapReady) as boolean) ?? false
-}
-
-/** 轮询等待地图就绪（避开 defineExpose ref 解包问题） */
-function waitForMap(): Promise<Map> {
-  return new Promise((resolve) => {
-    const check = () => {
-      const m = getMap()
-      if (m && getMapReady()) {
-        resolve(m)
-      } else {
-        setTimeout(check, 200)
-      }
-    }
-    check()
-  })
-}
-
-/** 绑定点击选点 */
-function bindClick(map: Map) {
-  map.on('click', (e) => {
-    const wgs = gcj02ToWgs84(e.lngLat.lng, e.lngLat.lat)
-    pickedLng.value = wgs[0]
-    pickedLat.value = wgs[1]
-    emit('update', wgs[0], wgs[1])
-    updateMarker(map, e.lngLat.lng, e.lngLat.lat)
-  })
-
-  // 光标样式
-  map.on('mouseenter', MARKER_LAYER, () => {
-    map.getCanvas().style.cursor = 'pointer'
-  })
-  map.on('mouseleave', MARKER_LAYER, () => {
-    map.getCanvas().style.cursor = ''
-  })
-}
-
-/** 在地图上显示标记点 */
-function updateMarker(map: Map, lng: number, lat: number) {
+/** 在地图上显示选点标记 */
+function showMarker(lng: number, lat: number) {
+  if (!map) return
   const geojson = {
     type: 'FeatureCollection' as const,
     features: [{
@@ -95,14 +50,14 @@ function updateMarker(map: Map, lng: number, lat: number) {
       properties: {},
     }],
   }
-  if (map.getSource(MARKER_SOURCE)) {
-    ;(map.getSource(MARKER_SOURCE) as any).setData(geojson)
+  if (map.getSource(SOURCE_ID)) {
+    ;(map.getSource(SOURCE_ID) as any).setData(geojson)
   } else {
-    map.addSource(MARKER_SOURCE, { type: 'geojson', data: geojson as any })
+    map.addSource(SOURCE_ID, { type: 'geojson', data: geojson as any })
     map.addLayer({
-      id: MARKER_LAYER,
+      id: LAYER_ID,
       type: 'circle',
-      source: MARKER_SOURCE,
+      source: SOURCE_ID,
       paint: {
         'circle-radius': 10,
         'circle-color': '#f56c6c',
@@ -116,28 +71,58 @@ function updateMarker(map: Map, lng: number, lat: number) {
 function clearPick() {
   pickedLng.value = null
   pickedLat.value = null
-  const map = getMap()
-  if (map && map.getSource(MARKER_SOURCE)) {
-    ;(map.getSource(MARKER_SOURCE) as any).setData({
-      type: 'FeatureCollection',
-      features: [],
-    })
+  if (map?.getSource(SOURCE_ID)) {
+    ;(map.getSource(SOURCE_ID) as any).setData({ type: 'FeatureCollection', features: [] })
   }
 }
 
-onMounted(async () => {
-  const map = await waitForMap()
-  mapReady.value = true
-  bindClick(map)
+onMounted(() => {
+  if (!mapEl.value) return
 
-  // 编辑模式回填已有坐标
-  if (props.modelLng && props.modelLat) {
-    const gcj = wgs84ToGcj02(props.modelLng, props.modelLat)
-    updateMarker(map, gcj[0], gcj[1])
+  try {
+    map = new maplibregl.Map({
+      container: mapEl.value,
+      style: buildTiandituStyle(),
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+    })
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right')
+
+    map.on('load', () => {
+      loading.value = false
+
+      // 绑定点击选点
+      map!.on('click', (e) => {
+        const wgs = gcj02ToWgs84(e.lngLat.lng, e.lngLat.lat)
+        pickedLng.value = wgs[0]
+        pickedLat.value = wgs[1]
+        emit('update', wgs[0], wgs[1])
+        showMarker(e.lngLat.lng, e.lngLat.lat)
+      })
+
+      // 编辑模式：回填已有坐标
+      if (props.modelLng && props.modelLat) {
+        const gcj = wgs84ToGcj02(props.modelLng, props.modelLat)
+        showMarker(gcj[0], gcj[1])
+      }
+    })
+
+    map.on('error', (e) => {
+      console.warn('地图瓦片加载失败:', e.error?.message ?? e)
+    })
+  } catch (e) {
+    console.error('地图初始化失败', e)
+    loading.value = false
   }
 })
 
-defineExpose({ pickedLng, pickedLat })
+onUnmounted(() => {
+  if (map) {
+    map.remove()
+    map = null
+  }
+})
 </script>
 
 <style scoped>
