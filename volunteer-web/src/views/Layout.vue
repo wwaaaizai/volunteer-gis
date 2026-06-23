@@ -14,6 +14,7 @@
           <el-menu-item index="/my-signups">我的报名</el-menu-item>
           <el-menu-item index="/checkin">签到</el-menu-item>
           <el-menu-item index="/admin" v-if="isAdmin">管理后台</el-menu-item>
+          <el-menu-item index="/organizer" v-if="isOrganizer">组织者后台</el-menu-item>
         </el-menu>
         <el-dropdown>
           <span class="user-info">{{ userName }}</span>
@@ -43,6 +44,7 @@ const collapse = ref(false)
 
 const currentPath = computed(() => route.path)
 const isAdmin = computed(() => userStore.user?.role === 'admin')
+const isOrganizer = computed(() => userStore.user?.role === 'organizer' || userStore.user?.role === 'admin')
 const userName = computed(() => userStore.user?.studentId || '用户')
 
 function handleLogout() {

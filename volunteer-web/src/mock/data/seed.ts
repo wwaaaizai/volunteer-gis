@@ -10,7 +10,7 @@ export function createSeedDB(): MockDB {
   const now = '2026-06-16T10:00:00'
 
   return {
-    _nextId: { user: 3, activity: 9, signup: 5 },
+    _nextId: { user: 4, activity: 9, signup: 5 },
 
     users: [
       {
@@ -37,6 +37,18 @@ export function createSeedDB(): MockDB {
         createdAt: now,
         updatedAt: now,
       },
+      {
+        id: 3,
+        studentId: 'organizer',
+        password: '123456',
+        name: '李组织',
+        phone: '13800000003',
+        role: 'organizer',
+        totalHours: 0,
+        deleted: 0,
+        createdAt: now,
+        updatedAt: now,
+      },
     ],
 
     activities: [
@@ -56,6 +68,9 @@ export function createSeedDB(): MockDB {
         coverImage: null,
         status: 'published',
         creatorId: 1,
+        organizerId: 1,
+        category: 'campus',
+        tags: '室内,整理,图书馆',
         deleted: 0,
         createdAt: now,
         updatedAt: now,
@@ -76,6 +91,9 @@ export function createSeedDB(): MockDB {
         coverImage: null,
         status: 'published',
         creatorId: 1,
+        organizerId: 1,
+        category: 'campus',
+        tags: '导览,新生,教学楼',
         deleted: 0,
         createdAt: now,
         updatedAt: now,

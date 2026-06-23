@@ -12,7 +12,7 @@ export interface MockUser {
   password: string
   name: string
   phone: string
-  role: 'student' | 'admin'
+  role: 'student' | 'admin' | 'organizer'
   totalHours: number
   deleted: number
   createdAt: string
@@ -35,6 +35,9 @@ export interface MockActivity {
   coverImage: string | null
   status: 'draft' | 'published' | 'ongoing' | 'ended' | 'cancelled'
   creatorId: number
+  organizerId: number
+  category: string
+  tags: string
   deleted: number
   createdAt: string
   updatedAt: string

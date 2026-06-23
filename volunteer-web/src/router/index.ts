@@ -54,6 +54,25 @@ const routes = [
         component: () => import('@/views/CreateActivity.vue'),
         meta: { title: '创建活动', role: 'admin' },
       },
+      // ===== 组织者路由 =====
+      {
+        path: 'organizer',
+        name: 'OrganizerDashboard',
+        component: () => import('@/views/OrganizerDashboard.vue'),
+        meta: { title: '组织者后台', role: 'organizer' },
+      },
+      {
+        path: 'organizer/create-activity',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', role: 'organizer' },
+      },
+      {
+        path: 'organizer/activity/:id',
+        name: 'OrganizerActivityDetail',
+        component: () => import('@/views/OrganizerActivityDetail.vue'),
+        meta: { title: '活动详情', role: 'organizer' },
+      },
     ],
   },
 ]
@@ -75,6 +94,13 @@ router.beforeEach(async (to, _from, next) => {
   // 需要管理员权限
   if (to.meta.role === 'admin') {
     if (!userStore.user || userStore.user.role !== 'admin') {
+      return next('/')
+    }
+  }
+
+  // 需要组织者权限
+  if (to.meta.role === 'organizer') {
+    if (!userStore.user || (userStore.user.role !== 'organizer' && userStore.user.role !== 'admin')) {
       return next('/')
     }
   }
