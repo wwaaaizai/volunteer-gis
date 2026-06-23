@@ -135,6 +135,13 @@
 // Response data: Activity[]（与列表接口相同结构）
 ```
 
+### GET `/api/activities/admin` — 管理员活动列表
+- **鉴权**: Bearer Token + `@PreAuthorize("hasRole('admin')")`
+- **查询**: 返回全部活动（不过滤 status），按 created_at 降序；用于管理后台展示所有 draft/published/ended 等状态
+```json
+// Response data: Activity[]（与列表接口相同结构，但包含所有状态的记录）
+```
+
 ---
 
 ## 4. 报名管理 (ABM) — `/api/signups`

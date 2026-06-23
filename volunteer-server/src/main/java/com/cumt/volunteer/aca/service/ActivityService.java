@@ -20,4 +20,9 @@ public interface ActivityService extends IService<Activity> {
      * 关键词搜索活动
      */
     List<Activity> searchActivities(String keyword);
+
+    /**
+     * 查询全部活动（管理员用，不做状态过滤）
+     */
+    List<Activity> listAllActivities();
 }

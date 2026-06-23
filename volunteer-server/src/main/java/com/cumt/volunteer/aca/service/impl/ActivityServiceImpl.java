@@ -44,4 +44,11 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         wrapper.orderByDesc(Activity::getCreatedAt);
         return list(wrapper);
     }
+
+    @Override
+    public List<Activity> listAllActivities() {
+        // 管理员接口：不过滤 status，返回全部活动
+        return list(new LambdaQueryWrapper<Activity>()
+                .orderByDesc(Activity::getCreatedAt));
+    }
 }

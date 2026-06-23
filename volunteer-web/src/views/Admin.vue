@@ -41,7 +41,8 @@ const loading = ref(true)
 
 async function loadActivities() {
   try {
-    activities.value = await request.get('/activities')
+    // 管理员接口：返回全部活动（含 draft/published/ended 等），不过滤状态
+    activities.value = await request.get('/activities/admin')
   } finally {
     loading.value = false
   }

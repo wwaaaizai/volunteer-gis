@@ -89,7 +89,7 @@ DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resou
 
 ---
 
-## 6. API 总览 —— 14 个端点
+## 6. API 总览 —— 15 个端点
 
 ### 公开（无需登录）
 | 方法 | 路径 | 说明 |
@@ -117,6 +117,7 @@ DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resou
 |------|------|------|
 | POST | `/api/activities` | 创建活动 |
 | PUT | `/api/activities/{id}/publish` | 发布活动 |
+| GET | `/api/activities/admin` | 管理员活动列表（全部状态） |
 | GET | `/api/signups/activity/{activityId}` | 查看活动报名名单 |
 | GET | `/api/checkin/qrcode/{activityId}` | 生成签到二维码码 |
 | PUT | `/api/checkin/verify-hours/{signupId}` | 审核志愿时长 |

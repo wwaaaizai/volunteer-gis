@@ -35,6 +35,8 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
     })
     instance.on('load', () => {
       mapReady.value = true
+      // 覆盖 MapLibre 默认的 grab 光标为默认箭头，仅悬停活动标记时显示 pointer
+      instance.getCanvas().style.cursor = 'default'
     })
     map.value = instance
   }

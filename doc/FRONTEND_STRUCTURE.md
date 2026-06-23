@@ -80,7 +80,7 @@ App.vue
         │   └── handleCheckOut() → navigator.geolocation / POST /api/checkin/out
         ├── Admin.vue          管理后台
         │   ├── el-tabs (活动管理 / 时长审核)
-        │   ├── el-table → GET /api/activities
+        │   ├── el-table → GET /api/activities/admin（全状态）
         │   └── 发布按钮 → PUT /api/activities/{id}/publish
         └── CreateActivity.vue 创建活动
             └── el-form → POST /api/activities
@@ -174,10 +174,9 @@ resolve.alias:
 ### 地图加载
 ```
 Map.vue onMounted
-  → new maplibregl.Map({ container, style: { sources: 天地图 WMTS } })
-  → request.get('/map/activities') → GeoJSON
-  → map.addSource('activities', { type: 'geojson', data })
-  → map.addLayer('activity-markers', { type: 'circle', paint: blue })
+  → BaseMap onMounted → new maplibregl.Map({ container, style: { sources: 天地图 WMTS } })
+  → loadActivities() → request.get('/map/activities') → GeoJSON
+  → ActivityLayer watch([map, geojson]) → addSource + addLayer (circle)
   → map.on('click', 'activity-markers') → router.push(`/activity/${id}`)
 ```
 

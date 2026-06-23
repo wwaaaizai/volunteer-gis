@@ -62,4 +62,13 @@ public class ActivityController {
     public Result<List<Activity>> searchActivities(@RequestParam String keyword) {
         return Result.ok(activityService.searchActivities(keyword));
     }
+
+    /**
+     * 管理员查询全部活动（不做状态过滤）
+     */
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('admin')")
+    public Result<List<Activity>> listAllActivities() {
+        return Result.ok(activityService.listAllActivities());
+    }
 }
