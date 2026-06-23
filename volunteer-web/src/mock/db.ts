@@ -68,12 +68,22 @@ export interface MockDB {
 }
 
 const STORAGE_KEY = 'volunteer-mock-db'
+/** 种子数据版本号，升级种子数据时递增，旧版本自动清除 */
+const SEED_VERSION = 2
 
 let db: MockDB | null = null
 
 /** 初始化或加载 Mock DB */
 export function getDB(): MockDB {
   if (db) return db
+
+  // 检查版本号，旧版本种子数据自动清除
+  const storedVersion = localStorage.getItem(STORAGE_KEY + '-version')
+  if (!storedVersion || Number(storedVersion) < SEED_VERSION) {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.setItem(STORAGE_KEY + '-version', String(SEED_VERSION))
+  }
+
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
     try {
@@ -85,6 +95,7 @@ export function getDB(): MockDB {
   if (!db) {
     db = createSeedDB()
     saveDB()
+    localStorage.setItem(STORAGE_KEY + '-version', String(SEED_VERSION))
   }
   return db
 }
