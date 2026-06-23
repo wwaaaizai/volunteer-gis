@@ -97,6 +97,25 @@ const routes = [
         component: () => import('@/views/OrganizerActivityDetail.vue'),
         meta: { title: '活动详情', role: 'organizer' },
       },
+      // ===== 组织者路由 =====
+      {
+        path: 'organizer',
+        name: 'OrganizerDashboard',
+        component: () => import('@/views/OrganizerDashboard.vue'),
+        meta: { title: '组织者后台', role: 'organizer' },
+      },
+      {
+        path: 'organizer/create-activity',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', role: 'organizer' },
+      },
+      {
+        path: 'organizer/activity/:id',
+        name: 'OrganizerActivityDetail',
+        component: () => import('@/views/OrganizerActivityDetail.vue'),
+        meta: { title: '活动详情', role: 'organizer' },
+      },
     ],
   },
 ]

@@ -47,10 +47,10 @@ public class SignupController {
     }
 
     /**
-     * 查看活动报名名单（管理员）
+     * 查看活动报名名单（管理员 / 组织者）
      */
     @GetMapping("/activity/{activityId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
     public Result<List<Signup>> getActivitySignups(@PathVariable Long activityId) {
         return Result.ok(signupService.getActivitySignups(activityId));
     }

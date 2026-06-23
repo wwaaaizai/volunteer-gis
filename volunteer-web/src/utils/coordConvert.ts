@@ -52,6 +52,27 @@ export function wgs84ToGcj02(lng: number, lat: number): [number, number] {
 }
 
 /**
+ * 单个坐标点 GCJ-02 → WGS-84 反向转换（迭代逼近法）
+ *
+ * 天地图底图为 GCJ-02，地图点击返回的是 GCJ-02 坐标，
+ * 数据库存储 WGS-84，需要反向转换。
+ */
+export function gcj02ToWgs84(lng: number, lat: number): [number, number] {
+  if (outOfChina(lng, lat)) {
+    return [lng, lat]
+  }
+  // 迭代逼近：GCJ → 近似 WGS → 再转 GCJ → 修正差值
+  let wgsLng = lng
+  let wgsLat = lat
+  for (let i = 0; i < 5; i++) {
+    const [gcjLng, gcjLat] = wgs84ToGcj02(wgsLng, wgsLat)
+    wgsLng += lng - gcjLng
+    wgsLat += lat - gcjLat
+  }
+  return [wgsLng, wgsLat]
+}
+
+/**
  * 批量将 WGS-84 坐标数组转换为 GCJ-02
  */
 export function batchWgs84ToGcj02(
