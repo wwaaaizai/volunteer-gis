@@ -61,6 +61,12 @@ const routes = [
         meta: { title: '组织者后台', roles: ['organizer', 'admin'] },
       },
       {
+        path: 'organizer/create',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', roles: ['organizer', 'admin'] },
+      },
+      {
         path: 'organizer/activity/:id',
         name: 'OrganizerActivityDetail',
         component: () => import('@/views/OrganizerActivityDetail.vue'),

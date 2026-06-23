@@ -95,14 +95,17 @@ public class AuthController {
         }
         // 从数据库加载完整用户信息
         var fullUser = userService.getById(user.getUserId());
+        // 注意：Map.of 不接受 null 值，需显式处理
+        String name = (fullUser != null && fullUser.getName() != null) ? fullUser.getName() : "";
+        String phone = (fullUser != null && fullUser.getPhone() != null) ? fullUser.getPhone() : "";
+        String org = (fullUser != null && fullUser.getOrganization() != null) ? fullUser.getOrganization() : "";
         return Result.ok(Map.of(
                 "userId", user.getUserId().toString(),
                 "studentId", user.getStudentId(),
                 "role", user.getRole(),
-                "name", fullUser != null ? fullUser.getName() : "",
-                "phone", fullUser != null ? fullUser.getPhone() : "",
-                "organization", fullUser != null && fullUser.getOrganization() != null
-                        ? fullUser.getOrganization() : ""
+                "name", name,
+                "phone", phone,
+                "organization", org
         ));
     }
 }
