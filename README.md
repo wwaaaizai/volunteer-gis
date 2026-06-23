@@ -93,22 +93,57 @@ npm run dev
 
 ### 方式二：完整模式（前后端联调）
 
-```bash
-# 1. 初始化数据库
-mysql -u root -p < volunteer-server/src/main/resources/db/init.sql
+> **适用**：已安装 MySQL 8.0 + JDK 17 + Node.js，需要真实数据库存储。
 
-# 2. 启动后端
-cd volunteer-server
-mvnw.cmd spring-boot:run      # Windows
-# 或 ./mvnw spring-boot:run   # macOS/Linux
+#### 前置准备
 
-# 3. 启动前端（关闭 Mock）
-cd volunteer-web
-# 创建 .env.local 文件：
-#   VITE_USE_MOCK=false
-#   VITE_TIANDITU_KEY=你的天地图key
-npm install
-npm run dev
+1. **安装 MySQL 8.0**，root 密码设为 `Cumt123`（或自行修改 `application.yml`）
+2. **安装 JDK 17**，配置 `JAVA_HOME` 环境变量
+3. **申请天地图 Key**（见下方说明），写入 `.env.local`
+
+#### 每次启动步骤
+
+⚠️ **以下三个终端窗口都要保持运行，不能关闭。**
+
+```
+终端1（MySQL）：
+    # MySQL 设为 Windows 服务开机自启即可，一般不需要手动操作
+    # 检查是否运行：netstat -ano | findstr 3306
+    # 如果未运行：net start MySQL
+
+终端2（后端，端口 9090）：
+    cd volunteer-server
+    mvnw.cmd spring-boot:run -Dspring-boot.run.arguments=--server.port=9090
+    # 看到 "Started VolunteerApplication" 表示启动成功
+
+终端3（前端，端口 5173）：
+    cd volunteer-web
+    npm install          # 仅首次需要
+    npx vite --port 5173
+    # 看到 "Local: http://localhost:5173/" 表示启动成功
+```
+
+**浏览器打开 `http://localhost:5173`**
+
+#### 验证是否启动成功
+
+| 端口 | 检查方式 |
+|------|---------|
+| 3306 | `netstat -ano \| findstr 3306` |
+| 9090 | `curl http://localhost:9090/api/auth/me` |
+| 5173 | 浏览器打开 `http://localhost:5173` |
+
+#### 配置文件
+
+| 文件 | 作用 | 需创建？ |
+|------|------|---------|
+| `volunteer-web/.env.local` | 前端环境变量 | 是（已被 gitignore） |
+| `volunteer-server/src/main/resources/application.yml` | 后端配置 | 否 |
+
+`.env.local` 示例：
+```
+VITE_USE_MOCK=false
+VITE_TIANDITU_KEY=你的天地图Key
 ```
 
 ### 天地图 API Key
