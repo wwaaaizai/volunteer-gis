@@ -22,34 +22,39 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SpatialCalculator {
 
-    // ──── 矿大南湖校区边界（WGS-84，数据库使用）───
-    // 精确覆盖：大学路→昆仑大道，镜湖→行健路
+    // ──── 矿大南湖校区边界（WGS-84，GPS原始坐标）───
+    // 参考来源：BIGEMAP / earthol.com / OSM
+    // 校区约 2km×1.5km，西起大学路、东至昆仑大道、南至镜湖、北至三环南路
 
     /** WGS-84 西边界经度 */
-    public static final double CAMPUS_WGS84_LNG_MIN = 117.190;
+    public static final double CAMPUS_WGS84_LNG_MIN = 117.134;
     /** WGS-84 东边界经度 */
-    public static final double CAMPUS_WGS84_LNG_MAX = 117.215;
+    public static final double CAMPUS_WGS84_LNG_MAX = 117.156;
     /** WGS-84 南边界纬度 */
     public static final double CAMPUS_WGS84_LAT_MIN = 34.208;
     /** WGS-84 北边界纬度 */
-    public static final double CAMPUS_WGS84_LAT_MAX = 34.226;
+    public static final double CAMPUS_WGS84_LAT_MAX = 34.222;
 
     // ──── 矿大南湖校区边界（GCJ-02，天地图底图使用）───
-    // 由 WGS-84 边界经 wgs84ToGcj02() 转换后取 min/max 得到
-    // 偏移量：经度 +0.005°~0.006°，纬度 -0.002°~0.001°
+    // 由 WGS-84 四角经 CoordConvertService.wgs84ToGcj02() 转换后取 min/max
+    // 徐州地区偏移量：经度 +0.005°~0.006°，纬度 -0.002°~0.003°
 
     /** GCJ-02 西边界经度 */
-    public static final double CAMPUS_GCJ02_LNG_MIN = 117.195;
+    public static final double CAMPUS_GCJ02_LNG_MIN = 117.139;
     /** GCJ-02 东边界经度 */
-    public static final double CAMPUS_GCJ02_LNG_MAX = 117.221;
+    public static final double CAMPUS_GCJ02_LNG_MAX = 117.162;
     /** GCJ-02 南边界纬度 */
     public static final double CAMPUS_GCJ02_LAT_MIN = 34.206;
     /** GCJ-02 北边界纬度 */
-    public static final double CAMPUS_GCJ02_LAT_MAX = 34.224;
+    public static final double CAMPUS_GCJ02_LAT_MAX = 34.220;
 
-    /** 校区中心 WGS-84 */
-    public static final double CAMPUS_CENTER_LNG = 117.2050;
-    public static final double CAMPUS_CENTER_LAT = 34.2173;
+    /** 校区中心 WGS-84（参考 BIGEMAP: 117.145, 34.215） */
+    public static final double CAMPUS_CENTER_LNG_WGS = 117.145;
+    public static final double CAMPUS_CENTER_LAT_WGS = 34.215;
+
+    /** 校区中心 GCJ-02（天地图显示用） */
+    public static final double CAMPUS_CENTER_LNG_GCJ = 117.150;
+    public static final double CAMPUS_CENTER_LAT_GCJ = 34.213;
 
     /** 地球平均半径（米） */
     private static final double EARTH_RADIUS_METERS = 6_371_000;

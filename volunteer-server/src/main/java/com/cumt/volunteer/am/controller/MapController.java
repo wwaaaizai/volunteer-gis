@@ -76,15 +76,16 @@ public class MapController {
                                 "lat", SpatialCalculator.CAMPUS_GCJ02_LAT_MIN));
         gcj02.put("ne", Map.of("lng", SpatialCalculator.CAMPUS_GCJ02_LNG_MAX,
                                 "lat", SpatialCalculator.CAMPUS_GCJ02_LAT_MAX));
-        gcj02.put("center", Map.of("lng", 117.208, "lat", 34.215));
+        gcj02.put("center", Map.of("lng", SpatialCalculator.CAMPUS_CENTER_LNG_GCJ,
+                                    "lat", SpatialCalculator.CAMPUS_CENTER_LAT_GCJ));
 
         Map<String, Object> wgs84 = new LinkedHashMap<>();
         wgs84.put("sw", Map.of("lng", SpatialCalculator.CAMPUS_WGS84_LNG_MIN,
                                 "lat", SpatialCalculator.CAMPUS_WGS84_LAT_MIN));
         wgs84.put("ne", Map.of("lng", SpatialCalculator.CAMPUS_WGS84_LNG_MAX,
                                 "lat", SpatialCalculator.CAMPUS_WGS84_LAT_MAX));
-        wgs84.put("center", Map.of("lng", SpatialCalculator.CAMPUS_CENTER_LNG,
-                                    "lat", SpatialCalculator.CAMPUS_CENTER_LAT));
+        wgs84.put("center", Map.of("lng", SpatialCalculator.CAMPUS_CENTER_LNG_WGS,
+                                    "lat", SpatialCalculator.CAMPUS_CENTER_LAT_WGS));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("gcj02", gcj02);

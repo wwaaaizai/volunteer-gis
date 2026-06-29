@@ -13,8 +13,8 @@ import { wgs84ToGcj02 } from '@/utils/coordConvert'
  * <p><b>坐标说明</b>：数据库存储 WGS-84，地图显示时转为 GCJ-02 对齐天地图底图。</p>
  */
 
-// WGS-84 原始坐标（中国矿业大学南湖校区中心）
-const WGS84_CENTER: [number, number] = [117.2050, 34.2173]
+// WGS-84 原始坐标（中国矿业大学南湖校区中心，参考 BIGEMAP/OSM）
+const WGS84_CENTER: [number, number] = [117.145, 34.215]
 
 /** 中国矿业大学（南湖校区）中心坐标（已转为 GCJ-02） */
 export const DEFAULT_CENTER: [number, number] = wgs84ToGcj02(...WGS84_CENTER)
@@ -28,11 +28,11 @@ export const MIN_ZOOM = 13
 export const MAX_ZOOM = 19
 
 // ──── 矿大南湖校区边界框（GCJ-02，天地图使用）───
-// 由 WGS-84 边界经 wgs84ToGcj02() 转换后取 min/max 得到
-// 与后端 SpatialCalculator 中的常量同步
+// 由 WGS-84 四角经 wgs84ToGcj02() 转换后取 min/max
+// 与后端 SpatialCalculator 常量同步
 
-const GCJ02_SW: [number, number] = [117.195, 34.206]  // 西南角
-const GCJ02_NE: [number, number] = [117.221, 34.224]  // 东北角
+const GCJ02_SW: [number, number] = [117.139, 34.206]  // 西南角
+const GCJ02_NE: [number, number] = [117.162, 34.220]  // 东北角
 
 /** 校区边界框（GCJ-02），用于 MapLibre maxBounds 限制拖拽范围 */
 export const CAMPUS_BOUNDS_GCJ02: [[number, number], [number, number]] = [
@@ -41,7 +41,7 @@ export const CAMPUS_BOUNDS_GCJ02: [[number, number], [number, number]] = [
 ]
 
 /** 校区中心点（GCJ-02） */
-export const CAMPUS_CENTER_GCJ02: [number, number] = [117.208, 34.215]
+export const CAMPUS_CENTER_GCJ02: [number, number] = [117.150, 34.213]
 
 /** 天地图 API Key（从环境变量读取，占位兜底为空） */
 export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''
