@@ -46,6 +46,76 @@ export const CAMPUS_CENTER_GCJ02: [number, number] = [117.140, 34.215]
 /** 天地图 API Key（从环境变量读取，占位兜底为空） */
 export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''
 
+// ──── GeoServer WMS 图层配置（P2-AM-03）──────────────────
+
+/** GeoServer WMS 服务基础地址（部署后修改为实际地址） */
+export const GEOSERVER_WMS_URL = 'http://localhost:8080/geoserver/campus/wms'
+
+/** 校园图层定义（与后端 /api/map/layers 返回数据同步） */
+export interface CampusLayerDef {
+  id: string
+  name: string
+  geometryType: 'polygon' | 'line' | 'point'
+  description: string
+  /** 是否默认显示 */
+  defaultVisible: boolean
+  /** 默认透明度 0~1 */
+  defaultOpacity: number
+}
+
+export const CAMPUS_LAYERS: CampusLayerDef[] = [
+  {
+    id: 'campus:buildings', name: '校园建筑', geometryType: 'polygon',
+    description: '建筑物轮廓', defaultVisible: true, defaultOpacity: 0.7,
+  },
+  {
+    id: 'campus:roads', name: '校园道路', geometryType: 'line',
+    description: '主干道和支路', defaultVisible: true, defaultOpacity: 0.8,
+  },
+  {
+    id: 'campus:greenland', name: '校园绿地', geometryType: 'polygon',
+    description: '绿化带和草坪', defaultVisible: true, defaultOpacity: 0.6,
+  },
+  {
+    id: 'campus:water', name: '校园水系', geometryType: 'polygon',
+    description: '镜湖和河流', defaultVisible: true, defaultOpacity: 0.5,
+  },
+  {
+    id: 'campus:poi', name: '校园POI', geometryType: 'point',
+    description: '校门/食堂/超市', defaultVisible: false, defaultOpacity: 0.9,
+  },
+]
+
+/**
+ * 构造 GeoServer WMS 栅格瓦片 source 配置（P2-AM-03）。
+ *
+ * <p>将 GeoServer WMS GetMap 请求封装为 MapLibre raster source，
+ * 以 256px 瓦片方式请求，与天地图底图对齐。</p>
+ *
+ * @param layerName WMS 图层名，如 campus:buildings
+ * @param baseUrl   GeoServer WMS 地址
+ */
+export function buildGeoserverWmsSource(
+  layerName: string,
+  baseUrl: string = GEOSERVER_WMS_URL,
+) {
+  return {
+    type: 'raster' as const,
+    tiles: [
+      `${baseUrl}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
+      `&LAYERS=${encodeURIComponent(layerName)}` +
+      `&STYLES=&CRS=EPSG:3857` +
+      `&BBOX={bbox-epsg-3857}` +
+      `&WIDTH=256&HEIGHT=256` +
+      `&FORMAT=image/png&TRANSPARENT=true`,
+    ],
+    tileSize: 256,
+    // GeoServer 可能不支持高缩放级别，限制在 13~19
+    minzoom: 13,
+    maxzoom: 19,
+  }
+}
+
 /**
  * 构造天地图 MapLibre style（底图 + 注记）。
  * 引入第二个图商时，可在此提供高德/百度等替代 style 工厂。
