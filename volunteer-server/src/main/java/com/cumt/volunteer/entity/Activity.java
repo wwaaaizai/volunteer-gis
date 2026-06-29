@@ -56,6 +56,15 @@ public class Activity {
     /** 创建者ID */
     private Long creatorId;
 
+    /** 组织者ID（活动归属的组织者用户ID） */
+    private Long organizerId;
+
+    /** 活动分类：environmental/support/education/community/campus/other */
+    private String category;
+
+    /** 活动标签，逗号分隔（如 "户外,体力,长期"） */
+    private String tags;
+
     @TableLogic
     private Integer deleted;
 
