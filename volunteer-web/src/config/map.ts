@@ -22,6 +22,27 @@ export const DEFAULT_CENTER: [number, number] = wgs84ToGcj02(...WGS84_CENTER)
 /** 默认缩放级别 */
 export const DEFAULT_ZOOM = 14
 
+/** 最小缩放级别（P2-AM-13） */
+export const MIN_ZOOM = 13
+/** 最大缩放级别（P2-AM-13） */
+export const MAX_ZOOM = 19
+
+// ──── 矿大南湖校区边界框（GCJ-02，天地图使用）───
+// 由 WGS-84 边界经 wgs84ToGcj02() 转换后取 min/max 得到
+// 与后端 SpatialCalculator 中的常量同步
+
+const GCJ02_SW: [number, number] = [117.195, 34.206]  // 西南角
+const GCJ02_NE: [number, number] = [117.221, 34.224]  // 东北角
+
+/** 校区边界框（GCJ-02），用于 MapLibre maxBounds 限制拖拽范围 */
+export const CAMPUS_BOUNDS_GCJ02: [[number, number], [number, number]] = [
+  GCJ02_SW,
+  GCJ02_NE,
+]
+
+/** 校区中心点（GCJ-02） */
+export const CAMPUS_CENTER_GCJ02: [number, number] = [117.208, 34.215]
+
 /** 天地图 API Key（从环境变量读取，占位兜底为空） */
 export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''
 
