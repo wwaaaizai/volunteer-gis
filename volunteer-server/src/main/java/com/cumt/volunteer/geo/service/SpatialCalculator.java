@@ -23,37 +23,37 @@ import org.springframework.stereotype.Component;
 public class SpatialCalculator {
 
     // ──── 矿大南湖校区边界（WGS-84，GPS原始坐标）───
-    // GCJ-02 中心 [117.140, 34.220] 反推 WGS-84 中心约 [117.135, 34.222]
-    // 校区约 2km×1.5km，西起大学路、东至昆仑大道、南至镜湖、北至三环南路
+    // GCJ-02 中心 [117.140, 34.215] 反推 WGS-84 中心约 [117.134, 34.217]
+    // 各方向外扩约 2km → lng ±0.022°, lat ±0.018°
 
     /** WGS-84 西边界经度 */
-    public static final double CAMPUS_WGS84_LNG_MIN = 117.124;
+    public static final double CAMPUS_WGS84_LNG_MIN = 117.112;
     /** WGS-84 东边界经度 */
-    public static final double CAMPUS_WGS84_LNG_MAX = 117.146;
+    public static final double CAMPUS_WGS84_LNG_MAX = 117.156;
     /** WGS-84 南边界纬度 */
-    public static final double CAMPUS_WGS84_LAT_MIN = 34.215;
+    public static final double CAMPUS_WGS84_LAT_MIN = 34.199;
     /** WGS-84 北边界纬度 */
-    public static final double CAMPUS_WGS84_LAT_MAX = 34.229;
+    public static final double CAMPUS_WGS84_LAT_MAX = 34.235;
 
     // ──── 矿大南湖校区边界（GCJ-02，天地图底图使用）───
-    // 以 [117.140, 34.220] 为中心，各方向外扩约 1km
+    // 以 [117.140, 34.215] 为中心，各方向外扩约 2km
 
     /** GCJ-02 西边界经度 */
-    public static final double CAMPUS_GCJ02_LNG_MIN = 117.129;
+    public static final double CAMPUS_GCJ02_LNG_MIN = 117.118;
     /** GCJ-02 东边界经度 */
-    public static final double CAMPUS_GCJ02_LNG_MAX = 117.151;
+    public static final double CAMPUS_GCJ02_LNG_MAX = 117.162;
     /** GCJ-02 南边界纬度 */
-    public static final double CAMPUS_GCJ02_LAT_MIN = 34.213;
+    public static final double CAMPUS_GCJ02_LAT_MIN = 34.197;
     /** GCJ-02 北边界纬度 */
-    public static final double CAMPUS_GCJ02_LAT_MAX = 34.227;
+    public static final double CAMPUS_GCJ02_LAT_MAX = 34.233;
 
-    /** 校区中心 WGS-84（由 GCJ-02 [117.140,34.220] 反推） */
-    public static final double CAMPUS_CENTER_LNG_WGS = 117.135;
-    public static final double CAMPUS_CENTER_LAT_WGS = 34.222;
+    /** 校区中心 WGS-84（由 GCJ-02 [117.140, 34.215] 反推） */
+    public static final double CAMPUS_CENTER_LNG_WGS = 117.134;
+    public static final double CAMPUS_CENTER_LAT_WGS = 34.217;
 
     /** 校区中心 GCJ-02（天地图显示用） */
     public static final double CAMPUS_CENTER_LNG_GCJ = 117.140;
-    public static final double CAMPUS_CENTER_LAT_GCJ = 34.220;
+    public static final double CAMPUS_CENTER_LAT_GCJ = 34.215;
 
     /** 地球平均半径（米） */
     private static final double EARTH_RADIUS_METERS = 6_371_000;

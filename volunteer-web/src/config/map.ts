@@ -13,11 +13,11 @@ import { wgs84ToGcj02 } from '@/utils/coordConvert'
  * <p><b>坐标说明</b>：数据库存储 WGS-84，地图显示时转为 GCJ-02 对齐天地图底图。</p>
  */
 
-// WGS-84 原始坐标（由 GCJ-02 [117.140,34.220] 反推 ≈ [117.135,34.222]）
-const WGS84_CENTER: [number, number] = [117.135, 34.222]
+// WGS-84 原始坐标（由 GCJ-02 [117.140,34.215] 反推）
+const WGS84_CENTER: [number, number] = [117.134, 34.217]
 
-/** 中国矿业大学（南湖校区）中心坐标（GCJ-02，直接指定） */
-export const DEFAULT_CENTER: [number, number] = [117.140, 34.220]
+/** 中国矿业大学（南湖校区）中心坐标（GCJ-02） */
+export const DEFAULT_CENTER: [number, number] = [117.140, 34.215]
 
 /** 默认缩放级别 */
 export const DEFAULT_ZOOM = 14
@@ -28,11 +28,11 @@ export const MIN_ZOOM = 13
 export const MAX_ZOOM = 19
 
 // ──── 矿大南湖校区边界框（GCJ-02，天地图使用）───
-// 以 [117.140, 34.220] 为中心，各方向外扩约 1km
+// 以 [117.140, 34.215] 为中心，各方向外扩约 2km
 // 与后端 SpatialCalculator 常量同步
 
-const GCJ02_SW: [number, number] = [117.129, 34.213]  // 西南角
-const GCJ02_NE: [number, number] = [117.151, 34.227]  // 东北角
+const GCJ02_SW: [number, number] = [117.118, 34.197]  // 西南角
+const GCJ02_NE: [number, number] = [117.162, 34.233]  // 东北角
 
 /** 校区边界框（GCJ-02），用于 MapLibre maxBounds 限制拖拽范围 */
 export const CAMPUS_BOUNDS_GCJ02: [[number, number], [number, number]] = [
@@ -41,7 +41,7 @@ export const CAMPUS_BOUNDS_GCJ02: [[number, number], [number, number]] = [
 ]
 
 /** 校区中心点（GCJ-02） */
-export const CAMPUS_CENTER_GCJ02: [number, number] = [117.140, 34.220]
+export const CAMPUS_CENTER_GCJ02: [number, number] = [117.140, 34.215]
 
 /** 天地图 API Key（从环境变量读取，占位兜底为空） */
 export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''
