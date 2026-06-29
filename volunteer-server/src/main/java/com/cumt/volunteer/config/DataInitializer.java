@@ -75,7 +75,7 @@ public class DataInitializer implements CommandLineRunner {
             organizer.setOrganization("校团委");
             organizer.setTotalHours(BigDecimal.ZERO);
             userMapper.insert(organizer);
-            log.info("组织者测试账号已创建: organizer / organizer123"); (fix: 后端联调准备 — DataInitializer增加organizer账号 + init.sql增量迁移 + 演示活动补全新字段)
+            log.info("组织者测试账号已创建: organizer / organizer123");
         }
     }
 

@@ -20,7 +20,7 @@ const WGS84_CENTER: [number, number] = [117.134, 34.217]
 export const DEFAULT_CENTER: [number, number] = [117.140, 34.215]
 
 /** 默认缩放级别 */
-export const DEFAULT_ZOOM = 14
+export const DEFAULT_ZOOM = 15
 
 /** 最小缩放级别（P2-AM-13） */
 export const MIN_ZOOM = 13

@@ -7,16 +7,22 @@
       📍 点击地图选择活动位置
     </div>
     <div ref="mapEl" class="picker-map"></div>
-    <div class="picked-coords" v-if="pickedLng && pickedLat">
-      <el-tag type="success" closable @close="clearPick">
-        已选：{{ pickedLng.toFixed(6) }}, {{ pickedLat.toFixed(6) }}
-      </el-tag>
+    <div class="picker-info">
+      <div class="picker-info-row">
+        <span class="picker-info-label">选中坐标</span>
+        <template v-if="pickedLng && pickedLat">
+          <el-tag type="success" closable @close="clearPick" size="small">
+            {{ pickedLng.toFixed(6) }}, {{ pickedLat.toFixed(6) }}
+          </el-tag>
+        </template>
+        <span v-else class="picker-info-empty">在地图上点击选取</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, nextTick } from 'vue'
 import maplibregl from 'maplibre-gl'
 import { buildTiandituStyle, DEFAULT_CENTER, DEFAULT_ZOOM } from '@/config/map'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coordConvert'
@@ -35,13 +41,13 @@ const pickedLng = ref<number | null>(props.modelLng ?? null)
 const pickedLat = ref<number | null>(props.modelLat ?? null)
 const loading = ref(true)
 
-let map: maplibregl.Map | null = null
+const map = shallowRef<maplibregl.Map | null>(null)
 const SOURCE_ID = 'picker-point'
 const LAYER_ID = 'picker-marker'
 
-/** 在地图上显示选点标记 */
 function showMarker(lng: number, lat: number) {
-  if (!map) return
+  const m = map.value
+  if (!m) return
   const geojson = {
     type: 'FeatureCollection' as const,
     features: [{
@@ -50,11 +56,11 @@ function showMarker(lng: number, lat: number) {
       properties: {},
     }],
   }
-  if (map.getSource(SOURCE_ID)) {
-    ;(map.getSource(SOURCE_ID) as any).setData(geojson)
+  if (m.getSource(SOURCE_ID)) {
+    ;(m.getSource(SOURCE_ID) as any).setData(geojson)
   } else {
-    map.addSource(SOURCE_ID, { type: 'geojson', data: geojson as any })
-    map.addLayer({
+    m.addSource(SOURCE_ID, { type: 'geojson', data: geojson as any })
+    m.addLayer({
       id: LAYER_ID,
       type: 'circle',
       source: SOURCE_ID,
@@ -71,29 +77,34 @@ function showMarker(lng: number, lat: number) {
 function clearPick() {
   pickedLng.value = null
   pickedLat.value = null
-  if (map?.getSource(SOURCE_ID)) {
-    ;(map.getSource(SOURCE_ID) as any).setData({ type: 'FeatureCollection', features: [] })
+  const m = map.value
+  if (m?.getSource(SOURCE_ID)) {
+    ;(m.getSource(SOURCE_ID) as any).setData({ type: 'FeatureCollection', features: [] })
   }
 }
 
-onMounted(() => {
-  if (!mapEl.value) return
+onMounted(async () => {
+  await nextTick()
+  if (!mapEl.value) {
+    console.error('[MapPicker] 容器元素未找到')
+    loading.value = false
+    return
+  }
 
   try {
-    map = new maplibregl.Map({
+    const instance = new maplibregl.Map({
       container: mapEl.value,
       style: buildTiandituStyle(),
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
     })
 
-    map.addControl(new maplibregl.NavigationControl(), 'top-right')
+    instance.addControl(new maplibregl.NavigationControl(), 'top-right')
 
-    map.on('load', () => {
+    instance.on('load', () => {
       loading.value = false
 
-      // 绑定点击选点
-      map!.on('click', (e) => {
+      instance.on('click', (e) => {
         const wgs = gcj02ToWgs84(e.lngLat.lng, e.lngLat.lat)
         pickedLng.value = wgs[0]
         pickedLat.value = wgs[1]
@@ -101,26 +112,27 @@ onMounted(() => {
         showMarker(e.lngLat.lng, e.lngLat.lat)
       })
 
-      // 编辑模式：回填已有坐标
       if (props.modelLng && props.modelLat) {
         const gcj = wgs84ToGcj02(props.modelLng, props.modelLat)
         showMarker(gcj[0], gcj[1])
       }
     })
 
-    map.on('error', (e) => {
-      console.warn('地图瓦片加载失败:', e.error?.message ?? e)
+    instance.on('error', (e) => {
+      console.warn('[MapPicker] 瓦片加载失败:', e.error?.message ?? e)
     })
+
+    map.value = instance
   } catch (e) {
-    console.error('地图初始化失败', e)
+    console.error('[MapPicker] 地图初始化失败', e)
     loading.value = false
   }
 })
 
 onUnmounted(() => {
-  if (map) {
-    map.remove()
-    map = null
+  if (map.value) {
+    map.value.remove()
+    map.value = null
   }
 })
 </script>
@@ -128,33 +140,48 @@ onUnmounted(() => {
 <style scoped>
 .map-picker {
   border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 .map-picker-hint {
   position: absolute;
-  top: 8px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6px 18px;
   border-radius: 20px;
   font-size: 13px;
   color: #606266;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 .picker-map {
   width: 100%;
-  height: 320px;
+  height: 340px;
 }
-.picked-coords {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+.picker-info {
+  border-top: 1px solid #ebeef5;
+  background: #fafafa;
+  padding: 8px 14px;
+}
+.picker-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.picker-info-label {
+  color: #909399;
+  flex-shrink: 0;
+}
+.picker-info-empty {
+  color: #c0c4cc;
+  font-size: 13px;
 }
 </style>

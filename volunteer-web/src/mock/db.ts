@@ -59,17 +59,32 @@ export interface MockSignup {
   createdAt: string
 }
 
+export interface MockTemplate {
+  id: number
+  userId: number
+  name: string
+  title: string
+  description: string
+  category: string
+  tags: string
+  locationName: string
+  maxParticipants: number
+  createdAt: string
+  preset: boolean
+}
+
 export interface MockDB {
   users: MockUser[]
   activities: MockActivity[]
   signups: MockSignup[]
+  activityTemplates?: MockTemplate[]
   /** 自增 ID 计数器 */
-  _nextId: { user: number; activity: number; signup: number }
+  _nextId: { user: number; activity: number; signup: number; template?: number }
 }
 
 const STORAGE_KEY = 'volunteer-mock-db'
 /** 种子数据版本号，升级种子数据时递增，旧版本自动清除 */
-const SEED_VERSION = 2
+const SEED_VERSION = 5
 
 let db: MockDB | null = null
 

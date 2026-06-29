@@ -138,4 +138,12 @@ ALTER TABLE activity
 -- 为已有活动补全新增字段默认值
 UPDATE activity SET organizer_id = creator_id WHERE organizer_id IS NULL;
 UPDATE activity SET category = '' WHERE category IS NULL;
-UPDATE activity SET tags = '' WHERE tags IS NULL; (fix: 后端联调准备 — DataInitializer增加organizer账号 + init.sql增量迁移 + 演示活动补全新字段)
+UPDATE activity SET tags = '' WHERE tags IS NULL;
+
+-- ============================================
+-- Phase 3 增量迁移：报名审核 + AI 功能支撑
+-- ============================================
+
+-- signup 表新增拒绝理由字段
+ALTER TABLE signup
+  ADD COLUMN IF NOT EXISTS review_reason VARCHAR(255) COMMENT '拒绝理由';

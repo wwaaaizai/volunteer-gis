@@ -8,6 +8,11 @@
         </div>
       </template>
 
+      <!-- 封面图 -->
+      <div class="cover-section" v-if="activity.coverImage">
+        <img :src="activity.coverImage" alt="活动封面" class="cover-img" />
+      </div>
+
       <el-descriptions :column="2" border>
         <el-descriptions-item label="活动地点">{{ activity.locationName }}</el-descriptions-item>
         <el-descriptions-item label="报名人数">
@@ -107,6 +112,15 @@ loadActivity()
 }
 .detail-header h2 {
   margin: 0;
+}
+.cover-section {
+  margin-bottom: 16px;
+}
+.cover-img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 .desc-section {
   margin-top: 20px;
