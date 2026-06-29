@@ -10,7 +10,7 @@ export function createSeedDB(): MockDB {
   const now = '2026-06-16T10:00:00'
 
   return {
-    _nextId: { user: 3, activity: 9, signup: 5 },
+    _nextId: { user: 4, activity: 9, signup: 5 },
 
     users: [
       {
@@ -33,6 +33,18 @@ export function createSeedDB(): MockDB {
         phone: '13800000002',
         role: 'student',
         totalHours: 2.5,
+        deleted: 0,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 3,
+        studentId: 'organizer',
+        password: 'organizer123',
+        name: '李组织者',
+        phone: '13800000003',
+        role: 'organizer',
+        totalHours: 0,
         deleted: 0,
         createdAt: now,
         updatedAt: now,

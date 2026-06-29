@@ -1,6 +1,13 @@
 import { ref, shallowRef, onUnmounted, type Ref } from 'vue'
 import maplibregl from 'maplibre-gl'
-import { buildTiandituStyle, DEFAULT_CENTER, DEFAULT_ZOOM } from '@/config/map'
+import {
+  buildTiandituStyle,
+  DEFAULT_CENTER,
+  DEFAULT_ZOOM,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  CAMPUS_BOUNDS_GCJ02,
+} from '@/config/map'
 
 export interface UseMapOptions {
   /** 中心点 [经度, 纬度]，默认南湖校区 */
@@ -10,16 +17,16 @@ export interface UseMapOptions {
 }
 
 /**
- * 地图实例 Composable。
+ * 地图实例 Composable（P2-AM-12/13：限制拖拽范围 + 缩放级别）。
  *
  * <p>封装 MapLibre 地图的创建与销毁生命周期：
  * <ul>
  *   <li>创建天地图底图实例</li>
  *   <li>用 {@link shallowRef} 持有实例（避免 Vue 深度代理 MapLibre 内部对象）</li>
- *   <li>{@link onUnmounted} 时调用 {@code map.remove()} 释放资源，修复原 Map.vue 的内存泄漏</li>
+ *   <li>{@link onUnmounted} 时调用 {@code map.remove()} 释放资源</li>
+ *   <li>maxBounds 限制地图不可拖出矿大南湖校区</li>
+ *   <li>minZoom/maxZoom 限制缩放级别 13~19</li>
  * </ul>
- *
- * <p>调用方拿到 {@code mapReady} 与 {@code map} 后，可在此基础上叠加业务图层。
  */
 export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapOptions = {}) {
   const map = shallowRef<maplibregl.Map | null>(null)
@@ -33,6 +40,11 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
         style: buildTiandituStyle(),
         center: options.center ?? DEFAULT_CENTER,
         zoom: options.zoom ?? DEFAULT_ZOOM,
+        // P2-AM-12：限制地图拖拽范围在矿大南湖校区内
+        maxBounds: CAMPUS_BOUNDS_GCJ02,
+        // P2-AM-13：限制缩放级别
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
       })
       // 添加缩放控件和定位按钮
       instance.addControl(new maplibregl.NavigationControl(), 'top-right')
