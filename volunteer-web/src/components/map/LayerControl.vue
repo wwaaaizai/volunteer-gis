@@ -2,7 +2,7 @@
   <div class="layer-control" :class="{ collapsed: !expanded }">
     <!-- 标题栏 -->
     <div class="layer-control-header" @click="expanded = !expanded">
-      <el-icon><Layers /></el-icon>
+      <el-icon><Grid /></el-icon>
       <span class="header-text">图层控制</span>
       <el-icon class="arrow" :class="{ rotated: expanded }"><ArrowRight /></el-icon>
     </div>
@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-import { Layers, ArrowRight } from '@element-plus/icons-vue'
+import { Grid, ArrowRight } from '@element-plus/icons-vue'
 import { CAMPUS_LAYERS, type CampusLayerDef } from '@/config/map'
 
 export interface LayerState {
