@@ -60,7 +60,7 @@ const props = withDefaults(defineProps<{
   activityId?: number
   geofenceGeojson?: string
 }>(), {
-  mapHeight: 320,
+  mapHeight: 400,
 })
 
 const emit = defineEmits<{
