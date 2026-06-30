@@ -52,18 +52,16 @@ import { buildTiandituStyle, DEFAULT_CENTER, DEFAULT_ZOOM } from '@/config/map'
 import { wgs84ToGcj02, gcj02ToWgs84 } from '@/utils/coordConvert'
 import request from '@/api'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelLng?: number
   modelLat?: number
-  /** 地图高度（px） */
   mapHeight?: number
-  /** 是否显示围栏按钮（编辑模式） */
   showGeofenceBtn?: boolean
-  /** 活动ID（围栏联动用） */
   activityId?: number
-  /** 现有围栏 GeoJSON（用于显示围栏叠加层） */
   geofenceGeojson?: string
-}>()
+}>(), {
+  mapHeight: 320,
+})
 
 const emit = defineEmits<{
   (e: 'update', lng: number, lat: number): void
