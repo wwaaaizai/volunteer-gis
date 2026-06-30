@@ -8,4 +8,12 @@ public interface MapService {
      * 返回已发布活动点的 GeoJSON FeatureCollection
      */
     FeatureCollection getActivityGeoJSON();
+
+    /**
+     * 返回签到热力图数据（GeoJSON Point 集合）
+     *
+     * @param category 活动分类筛选，null=全部
+     * @param months   最近N个月
+     */
+    FeatureCollection getHeatmapData(String category, int months);
 }

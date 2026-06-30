@@ -38,15 +38,25 @@ public class CheckInServiceImpl implements CheckInService {
             throw new RuntimeException("当前状态不允许签到");
         }
 
-        // 验证签到距离
+        // 验证签到位置
         Activity activity = activityMapper.selectById(activityId);
-        double distance = spatialCalculator.distanceMeters(
-                GeoPoint.of(activity.getLongitude(), activity.getLatitude()),
-                GeoPoint.of(lng, lat)
-        );
-        if (distance > MAX_SIGN_DISTANCE) {
-            throw new RuntimeException("距离活动地点太远，请到达活动地点后签到（当前距离: "
-                    + String.format("%.0f", distance) + "米）");
+
+        // 优先使用地理围栏校验；无围栏则兜底500m圆形校验
+        if (activity.getCheckinRegion() != null && !activity.getCheckinRegion().isBlank()) {
+            double[][] polygon = spatialCalculator.parsePolygonFromGeoJson(activity.getCheckinRegion());
+            if (polygon != null && !spatialCalculator.isPointInPolygon(
+                    lng.doubleValue(), lat.doubleValue(), polygon)) {
+                throw new RuntimeException("您不在签到区域内，请到达活动指定区域后签到");
+            }
+        } else {
+            double distance = spatialCalculator.distanceMeters(
+                    GeoPoint.of(activity.getLongitude(), activity.getLatitude()),
+                    GeoPoint.of(lng, lat)
+            );
+            if (distance > MAX_SIGN_DISTANCE) {
+                throw new RuntimeException("距离活动地点太远，请到达活动地点后签到（当前距离: "
+                        + String.format("%.0f", distance) + "米）");
+            }
         }
 
         signup.setStatus("signed_in");

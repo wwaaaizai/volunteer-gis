@@ -65,6 +65,9 @@ public class Activity {
     /** 活动标签，逗号分隔（如 "户外,体力,长期"） */
     private String tags;
 
+    /** 签到围栏 GeoJSON Polygon（JSON字符串，null则使用500m圆形兜底） */
+    private String checkinRegion;
+
     @TableLogic
     private Integer deleted;
 

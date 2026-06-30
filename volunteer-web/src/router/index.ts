@@ -55,6 +55,12 @@ const routes = [
         meta: { title: '创建活动', roles: ['admin', 'organizer'] },
       },
       {
+        path: 'admin/geofence/:id',
+        name: 'GeofenceEdit',
+        component: () => import('@/views/GeofenceEdit.vue'),
+        meta: { title: '签到围栏', roles: ['admin', 'organizer'] },
+      },
+      {
         path: 'organizer',
         name: 'OrganizerDashboard',
         component: () => import('@/views/OrganizerDashboard.vue'),
@@ -71,6 +77,12 @@ const routes = [
         name: 'OrganizerActivityDetail',
         component: () => import('@/views/OrganizerActivityDetail.vue'),
         meta: { title: '活动详情', roles: ['organizer', 'admin'] },
+      },
+      {
+        path: 'organizer/geofence/:id',
+        name: 'OrganizerGeofenceEdit',
+        component: () => import('@/views/GeofenceEdit.vue'),
+        meta: { title: '签到围栏', roles: ['organizer', 'admin'] },
       },
       {
         path: 'organizer/profile',

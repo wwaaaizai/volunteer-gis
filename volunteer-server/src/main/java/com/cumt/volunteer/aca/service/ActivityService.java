@@ -30,4 +30,9 @@ public interface ActivityService extends IService<Activity> {
      * 编辑活动（草稿可全编，已发布仅限描述和封面）
      */
     void updateActivity(Long activityId, Activity update);
+
+    /**
+     * 保存签到地理围栏（GeoJSON Polygon）
+     */
+    void saveGeofence(Long activityId, String geojson);
 }

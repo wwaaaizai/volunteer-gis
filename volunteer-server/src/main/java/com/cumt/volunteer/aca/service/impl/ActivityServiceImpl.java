@@ -85,4 +85,14 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         }
         throw new RuntimeException("该状态的活动不可编辑");
     }
+
+    @Override
+    public void saveGeofence(Long activityId, String geojson) {
+        Activity activity = getById(activityId);
+        if (activity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        activity.setCheckinRegion(geojson);
+        updateById(activity);
+    }
 }

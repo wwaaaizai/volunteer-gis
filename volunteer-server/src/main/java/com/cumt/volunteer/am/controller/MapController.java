@@ -114,6 +114,24 @@ public class MapController {
         ));
     }
 
+    // ──── 活动热力图接口（P2-AM 热力图分析）───────────
+
+    /**
+     * 获取签到热力图数据。
+     *
+     * <p>返回所有已完成签到的坐标点集合，供前端 heatmap layer 渲染。
+     * 支持按分类和月份筛选。</p>
+     *
+     * @param category 活动分类筛选（可选）
+     * @param months   最近N个月（可选，默认12）
+     */
+    @GetMapping("/heatmap")
+    public Result<FeatureCollection> getHeatmap(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false, defaultValue = "12") int months) {
+        return Result.ok(mapService.getHeatmapData(category, months));
+    }
+
     // ──── 工具方法 ──────────────────────────────────────
 
     private Map<String, String> layer(String id, String name, String geometryType, String desc) {

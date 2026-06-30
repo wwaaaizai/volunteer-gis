@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/activities")
@@ -82,5 +83,27 @@ public class ActivityController {
                                     @RequestBody Activity activity) {
         activityService.updateActivity(id, activity);
         return Result.ok("更新成功");
+    }
+
+    /**
+     * 保存签到地理围栏（组织者/管理员，签到围栏功能）
+     */
+    @PutMapping("/{id}/geofence")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
+    public Result<?> saveGeofence(@PathVariable Long id,
+                                   @RequestBody Map<String, String> body) {
+        String geojson = body.get("geojson");
+        activityService.saveGeofence(id, geojson);
+        return Result.ok("围栏保存成功");
+    }
+
+    /**
+     * 获取签到地理围栏（供前端可视化展示）
+     */
+    @GetMapping("/{id}/geofence")
+    public Result<Map<String, String>> getGeofence(@PathVariable Long id) {
+        Activity activity = activityService.getById(id);
+        String geojson = activity != null ? activity.getCheckinRegion() : null;
+        return Result.ok(Map.of("geojson", geojson != null ? geojson : ""));
     }
 }
