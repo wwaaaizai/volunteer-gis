@@ -31,14 +31,10 @@
     </div>
 
     <!-- 热力图开关按钮 -->
-    <el-button
-      v-if="!heatmapVisible"
-      class="heatmap-toggle"
-      size="small"
-      @click="heatmapVisible = true; loadHeatmap()"
-    >
-      🔥 热力图
-    </el-button>
+    <div class="heatmap-toggle" v-if="!heatmapVisible" @click="heatmapVisible = true; loadHeatmap()">
+      <span class="ht-icon">🔥</span>
+      <span>活动热力图</span>
+    </div>
   </div>
 </template>
 
@@ -106,8 +102,8 @@ function addHeatmapLayer(data: FeatureCollection) {
         0.8, 'rgb(239,138,98)',
         1.0, 'rgb(178,24,43)',
       ],
-      'heatmap-radius': 30,
-      'heatmap-opacity': 0.7,
+      'heatmap-radius': 50,
+      'heatmap-opacity': 0.8,
     },
   })
 }
@@ -147,14 +143,33 @@ function handleFeatureClick(id: number) {
 .heatmap-toggle {
   position: absolute;
   bottom: 24px;
-  left: 12px;
+  right: 12px;
   z-index: 10;
+  background: linear-gradient(135deg, #ff6b35, #f7c948);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(255,107,53,0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: transform 0.15s;
+}
+.heatmap-toggle:hover {
+  transform: scale(1.05);
+}
+.ht-icon {
+  font-size: 18px;
 }
 
 .heatmap-panel {
   position: absolute;
   bottom: 24px;
-  left: 12px;
+  right: 12px;
   z-index: 10;
   background: rgba(255,255,255,0.95);
   border-radius: 8px;
