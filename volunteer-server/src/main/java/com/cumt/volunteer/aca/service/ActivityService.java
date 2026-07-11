@@ -7,7 +7,7 @@ import java.util.List;
 public interface ActivityService extends IService<Activity> {
 
     /**
-     * 创建活动（管理员）
+     * 创建活动（组织者/管理员）
      */
     void createActivity(Activity activity, Long creatorId);
 
@@ -20,4 +20,14 @@ public interface ActivityService extends IService<Activity> {
      * 关键词搜索活动
      */
     List<Activity> searchActivities(String keyword);
+
+    /**
+     * 按组织者查询活动（可选状态过滤）
+     */
+    List<Activity> listByOrganizer(Long userId, String status);
+
+    /**
+     * 编辑活动（草稿可全编，已发布仅限描述和封面）
+     */
+    void updateActivity(Long activityId, Activity update);
 }

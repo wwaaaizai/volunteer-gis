@@ -35,10 +35,10 @@ public class ActivityController {
     }
 
     /**
-     * 创建活动（管理员）
+     * 创建活动（管理员 / 组织者）
      */
     @PostMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
     public Result<?> createActivity(@RequestBody Activity activity,
                                     @AuthenticationPrincipal CurrentUser user) {
         activityService.createActivity(activity, user.getUserId());
@@ -46,10 +46,10 @@ public class ActivityController {
     }
 
     /**
-     * 发布活动（管理员）
+     * 发布活动（管理员 / 组织者）
      */
     @PutMapping("/{id}/publish")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
     public Result<?> publishActivity(@PathVariable Long id) {
         activityService.publishActivity(id);
         return Result.ok("发布成功");
@@ -61,5 +61,26 @@ public class ActivityController {
     @GetMapping("/search")
     public Result<List<Activity>> searchActivities(@RequestParam String keyword) {
         return Result.ok(activityService.searchActivities(keyword));
+    }
+
+    /**
+     * 我的活动列表（组织者视角，按状态筛选）
+     */
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
+    public Result<List<Activity>> listMyActivities(@RequestParam(required = false) String status,
+                                                    @AuthenticationPrincipal CurrentUser user) {
+        return Result.ok(activityService.listByOrganizer(user.getUserId(), status));
+    }
+
+    /**
+     * 编辑活动（组织者 / 管理员，仅草稿可全编，已发布仅可改描述/封面）
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
+    public Result<?> updateActivity(@PathVariable Long id,
+                                    @RequestBody Activity activity) {
+        activityService.updateActivity(id, activity);
+        return Result.ok("更新成功");
     }
 }

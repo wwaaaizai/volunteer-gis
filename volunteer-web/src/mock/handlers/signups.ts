@@ -83,14 +83,41 @@ export const signupHandlers = [
     return HttpResponse.json({ code: 200, message: 'success', data: list })
   }),
 
-  /** GET /api/signups/activity/:activityId — 活动报名名单（管理员） */
+  /** GET /api/signups/activity/:activityId — 活动报名名单（管理员/组织者） */
   http.get('/api/signups/activity/:activityId', ({ params, request }) => {
     const user = parseMockUser(request.headers.get('Authorization'))
-    if (!user || user.role !== 'admin') {
+    if (!user || (user.role !== 'admin' && user.role !== 'organizer')) {
       return HttpResponse.json({ code: 403, message: '无权限', data: null }, { status: 403 })
     }
     const db = getDB()
     const list = db.signups.filter(s => s.activityId === Number(params.activityId))
     return HttpResponse.json({ code: 200, message: 'success', data: list })
+  }),
+
+  /** PUT /api/signups/:id/review — 审核报名（通过/拒绝） */
+  http.put('/api/signups/:id/review', async ({ params, request }) => {
+    const user = parseMockUser(request.headers.get('Authorization'))
+    if (!user || (user.role !== 'admin' && user.role !== 'organizer')) {
+      return HttpResponse.json({ code: 403, message: '无权限', data: null }, { status: 403 })
+    }
+    const body = await request.json() as Record<string, string>
+    const action = body.action // 'approve' | 'reject'
+    const reason = body.reason || ''
+
+    const db = getDB()
+    const signup = db.signups.find(s => s.id === Number(params.id))
+    if (!signup) {
+      return HttpResponse.json({ code: 500, message: '报名记录不存在', data: null })
+    }
+    if (action === 'approve') {
+      signup.status = 'approved' as any
+    } else if (action === 'reject') {
+      signup.status = 'rejected' as any
+      ;(signup as any).reviewReason = reason
+    } else {
+      return HttpResponse.json({ code: 400, message: '无效操作', data: null })
+    }
+    saveDB()
+    return HttpResponse.json({ code: 200, message: '操作成功', data: null })
   }),
 ]

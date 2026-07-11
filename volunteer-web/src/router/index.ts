@@ -46,13 +46,75 @@ const routes = [
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/Admin.vue'),
-        meta: { title: '管理员后台', role: 'admin' },
+        meta: { title: '管理员后台', roles: ['admin'] },
       },
       {
         path: 'admin/create-activity',
         name: 'CreateActivity',
         component: () => import('@/views/CreateActivity.vue'),
-        meta: { title: '创建活动', role: 'admin' },
+        meta: { title: '创建活动', roles: ['admin', 'organizer'] },
+      },
+      {
+        path: 'organizer',
+        name: 'OrganizerDashboard',
+        component: () => import('@/views/OrganizerDashboard.vue'),
+        meta: { title: '组织者后台', roles: ['organizer', 'admin'] },
+      },
+      {
+        path: 'organizer/create',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', roles: ['organizer', 'admin'] },
+      },
+      {
+        path: 'organizer/activity/:id',
+        name: 'OrganizerActivityDetail',
+        component: () => import('@/views/OrganizerActivityDetail.vue'),
+        meta: { title: '活动详情', roles: ['organizer', 'admin'] },
+      },
+      {
+        path: 'organizer/profile',
+        name: 'OrganizerProfile',
+        component: () => import('@/views/OrganizerProfile.vue'),
+        meta: { title: '个人信息', roles: ['organizer', 'admin'] },
+      },
+      // ===== 组织者路由 =====
+      {
+        path: 'organizer',
+        name: 'OrganizerDashboard',
+        component: () => import('@/views/OrganizerDashboard.vue'),
+        meta: { title: '组织者后台', role: 'organizer' },
+      },
+      {
+        path: 'organizer/create-activity',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', role: 'organizer' },
+      },
+      {
+        path: 'organizer/activity/:id',
+        name: 'OrganizerActivityDetail',
+        component: () => import('@/views/OrganizerActivityDetail.vue'),
+        meta: { title: '活动详情', role: 'organizer' },
+      },
+      // ===== 组织者路由 =====
+      {
+        path: 'organizer',
+        name: 'OrganizerDashboard',
+        component: () => import('@/views/OrganizerDashboard.vue'),
+        meta: { title: '组织者后台', role: 'organizer' },
+      },
+      {
+        path: 'organizer/create-activity',
+        name: 'OrganizerCreateActivity',
+        component: () => import('@/views/CreateActivity.vue'),
+        meta: { title: '创建活动', role: 'organizer' },
+      },
+      {
+        path: 'organizer/activity/:id',
+        name: 'OrganizerActivityDetail',
+        component: () => import('@/views/OrganizerActivityDetail.vue'),
+        meta: { title: '活动详情', role: 'organizer' },
       },
     ],
   },
@@ -72,9 +134,25 @@ router.beforeEach(async (to, _from, next) => {
     await userStore.fetchUser()
   }
 
-  // 需要管理员权限
+  // 需要特定角色权限（P2-UPM-05：支持 meta.roles 数组）
+  const requiredRoles = to.meta.roles as string[] | undefined
+  if (requiredRoles && requiredRoles.length > 0) {
+    const userRole = userStore.user?.role || ''
+    if (!requiredRoles.includes(userRole)) {
+      return next('/')
+    }
+  }
+
+  // 兼容旧的 meta.role 单值写法
   if (to.meta.role === 'admin') {
     if (!userStore.user || userStore.user.role !== 'admin') {
+      return next('/')
+    }
+  }
+
+  // 需要组织者权限
+  if (to.meta.role === 'organizer') {
+    if (!userStore.user || (userStore.user.role !== 'organizer' && userStore.user.role !== 'admin')) {
       return next('/')
     }
   }

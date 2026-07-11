@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseMap from '@/components/map/BaseMap.vue'
 import ActivityLayer from '@/components/map/ActivityLayer.vue'
@@ -25,11 +25,13 @@ const mapInstance = computed(() => baseMapRef.value?.map ?? null)
 const geojson = ref<FeatureCollection | null>(null)
 
 // 加载活动 GeoJSON 数据
-try {
-  geojson.value = (await request.get('/map/activities')) as FeatureCollection
-} catch (err) {
-  console.error('加载活动数据失败:', err)
-}
+onMounted(async () => {
+  try {
+    geojson.value = (await request.get('/map/activities')) as FeatureCollection
+  } catch (err) {
+    console.error('加载活动数据失败:', err)
+  }
+})
 
 function handleFeatureClick(id: number) {
   router.push(`/activity/${id}`)

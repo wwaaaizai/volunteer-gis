@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS `user` (
     password    VARCHAR(255) NOT NULL           COMMENT '密码（bcrypt）',
     name        VARCHAR(64)  NOT NULL           COMMENT '姓名',
     phone       VARCHAR(16)                     COMMENT '手机号',
-    role        VARCHAR(16)  NOT NULL DEFAULT 'student' COMMENT '角色：student/admin',
+    role        VARCHAR(16)  NOT NULL DEFAULT 'student' COMMENT '角色：student/organizer/admin',
+    organization VARCHAR(64)                    COMMENT '所属机构（组织者填写）',
+    employee_id VARCHAR(32)                     COMMENT '工号（组织者填写）',
     total_hours DECIMAL(8,1) NOT NULL DEFAULT 0 COMMENT '累计志愿时长',
     deleted     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '逻辑删除',
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -48,6 +50,9 @@ CREATE TABLE IF NOT EXISTS `activity` (
     cover_image      VARCHAR(255)                         COMMENT '封面图片路径',
     status           VARCHAR(16)    NOT NULL DEFAULT 'draft' COMMENT '状态：draft/published/ongoing/ended/cancelled',
     creator_id       BIGINT                               COMMENT '创建者ID',
+    organizer_id     BIGINT                               COMMENT '组织者ID',
+    category         VARCHAR(32)                          COMMENT '活动分类：environmental/support/education/community/campus/other',
+    tags             VARCHAR(255)                         COMMENT '活动标签，逗号分隔',
     deleted          TINYINT(1)     NOT NULL DEFAULT 0    COMMENT '逻辑删除',
     created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -91,3 +96,54 @@ CREATE TABLE IF NOT EXISTS `message` (
     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_read (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='站内信表';
+
+-- -------------------------------------------
+-- 5. 组织者申请表（P2-UPM-04）
+-- -------------------------------------------
+CREATE TABLE IF NOT EXISTS `organizer_apply` (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id     BIGINT        NOT NULL              COMMENT '申请人用户ID',
+    organization VARCHAR(64)                        COMMENT '所属机构',
+    reason      TEXT                                COMMENT '申请理由',
+    status      VARCHAR(16)   NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
+    reviewed_by BIGINT                              COMMENT '审核管理员ID',
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织者申请表';
+
+-- -------------------------------------------
+-- 6. 操作日志表（P2-UPM-07）
+-- -------------------------------------------
+CREATE TABLE IF NOT EXISTS `operation_log` (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id         BIGINT        NOT NULL          COMMENT '操作者用户ID',
+    operation_type  VARCHAR(32)                     COMMENT '操作类型：create_activity/edit_activity/publish_activity',
+    description     VARCHAR(255)                    COMMENT '操作描述',
+    activity_id     BIGINT                          COMMENT '关联活动ID',
+    created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- -------------------------------------------
+-- Phase 2 ACA 增量迁移：activity 表新增字段
+-- -------------------------------------------
+ALTER TABLE activity
+  ADD COLUMN IF NOT EXISTS organizer_id BIGINT COMMENT '组织者ID' AFTER creator_id,
+  ADD COLUMN IF NOT EXISTS category VARCHAR(32) COMMENT '活动分类' AFTER organizer_id,
+  ADD COLUMN IF NOT EXISTS tags VARCHAR(255) COMMENT '活动标签，逗号分隔' AFTER category;
+
+-- 为已有活动补全新增字段默认值
+UPDATE activity SET organizer_id = creator_id WHERE organizer_id IS NULL;
+UPDATE activity SET category = '' WHERE category IS NULL;
+UPDATE activity SET tags = '' WHERE tags IS NULL;
+
+-- ============================================
+-- Phase 3 增量迁移：报名审核 + AI 功能支撑
+-- ============================================
+
+-- signup 表新增拒绝理由字段
+ALTER TABLE signup
+  ADD COLUMN IF NOT EXISTS review_reason VARCHAR(255) COMMENT '拒绝理由';

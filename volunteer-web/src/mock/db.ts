@@ -12,7 +12,7 @@ export interface MockUser {
   password: string
   name: string
   phone: string
-  role: 'student' | 'admin'
+  role: 'student' | 'admin' | 'organizer'
   totalHours: number
   deleted: number
   createdAt: string
@@ -35,6 +35,9 @@ export interface MockActivity {
   coverImage: string | null
   status: 'draft' | 'published' | 'ongoing' | 'ended' | 'cancelled'
   creatorId: number
+  organizerId: number
+  category: string
+  tags: string
   deleted: number
   createdAt: string
   updatedAt: string
@@ -56,21 +59,46 @@ export interface MockSignup {
   createdAt: string
 }
 
+export interface MockTemplate {
+  id: number
+  userId: number
+  name: string
+  title: string
+  description: string
+  category: string
+  tags: string
+  locationName: string
+  maxParticipants: number
+  createdAt: string
+  preset: boolean
+}
+
 export interface MockDB {
   users: MockUser[]
   activities: MockActivity[]
   signups: MockSignup[]
+  activityTemplates?: MockTemplate[]
   /** 自增 ID 计数器 */
-  _nextId: { user: number; activity: number; signup: number }
+  _nextId: { user: number; activity: number; signup: number; template?: number }
 }
 
 const STORAGE_KEY = 'volunteer-mock-db'
+/** 种子数据版本号，升级种子数据时递增，旧版本自动清除 */
+const SEED_VERSION = 5
 
 let db: MockDB | null = null
 
 /** 初始化或加载 Mock DB */
 export function getDB(): MockDB {
   if (db) return db
+
+  // 检查版本号，旧版本种子数据自动清除
+  const storedVersion = localStorage.getItem(STORAGE_KEY + '-version')
+  if (!storedVersion || Number(storedVersion) < SEED_VERSION) {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.setItem(STORAGE_KEY + '-version', String(SEED_VERSION))
+  }
+
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
     try {
@@ -82,6 +110,7 @@ export function getDB(): MockDB {
   if (!db) {
     db = createSeedDB()
     saveDB()
+    localStorage.setItem(STORAGE_KEY + '-version', String(SEED_VERSION))
   }
   return db
 }

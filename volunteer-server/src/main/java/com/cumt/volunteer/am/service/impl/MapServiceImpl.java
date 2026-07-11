@@ -7,6 +7,7 @@ import com.cumt.volunteer.entity.Activity;
 import com.cumt.volunteer.geo.model.Feature;
 import com.cumt.volunteer.geo.model.FeatureCollection;
 import com.cumt.volunteer.geo.model.GeoPoint;
+import com.cumt.volunteer.geo.service.CoordConvertService;
 import com.cumt.volunteer.geo.service.GeoJsonBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class MapServiceImpl implements MapService {
 
     private final ActivityMapper activityMapper;
     private final GeoJsonBuilder geoJsonBuilder;
+    private final CoordConvertService coordConvertService;
 
     @Override
     public FeatureCollection getActivityGeoJSON() {
@@ -38,8 +40,11 @@ public class MapServiceImpl implements MapService {
             properties.put("locationName", a.getLocationName());
             properties.put("startTime", a.getStartTime() != null ? a.getStartTime().toString() : null);
 
+            // WGS-84 → GCJ-02 坐标转换（对齐天地图底图）
+            double[] gcj = coordConvertService.wgs84ToGcj02(
+                    a.getLongitude().doubleValue(), a.getLatitude().doubleValue());
             features.add(geoJsonBuilder.pointFeature(
-                    GeoPoint.of(a.getLongitude(), a.getLatitude()),
+                    GeoPoint.of(gcj[0], gcj[1]),
                     properties
             ));
         }

@@ -6,8 +6,10 @@ import com.cumt.volunteer.apm.service.CheckInService;
 import com.cumt.volunteer.aca.mapper.ActivityMapper;
 import com.cumt.volunteer.entity.Activity;
 import com.cumt.volunteer.entity.Signup;
+import com.cumt.volunteer.entity.User;
 import com.cumt.volunteer.geo.model.GeoPoint;
 import com.cumt.volunteer.geo.service.SpatialCalculator;
+import com.cumt.volunteer.upm.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,7 @@ public class CheckInServiceImpl implements CheckInService {
 
     private final SignupMapper signupMapper;
     private final ActivityMapper activityMapper;
+    private final UserMapper userMapper;
     private final SpatialCalculator spatialCalculator;
 
     /** 签到允许的最大距离（米），中国矿业大学南湖校区直径约2km */
@@ -105,8 +108,18 @@ public class CheckInServiceImpl implements CheckInService {
         if (signup == null) {
             throw new RuntimeException("签到记录不存在");
         }
+        if (Boolean.TRUE.equals(signup.getHourVerified())) {
+            throw new RuntimeException("该记录已审核通过，无需重复审核");
+        }
+        // 标记为已审核
         signup.setHourVerified(true);
         signupMapper.updateById(signup);
+        // 累加志愿时长到用户总时长
+        User user = userMapper.selectById(signup.getUserId());
+        if (user != null && signup.getVolunteerHours() != null) {
+            user.setTotalHours(user.getTotalHours().add(signup.getVolunteerHours()));
+            userMapper.updateById(user);
+        }
     }
 
     private Signup getSignupRecord(Long activityId, Long userId) {

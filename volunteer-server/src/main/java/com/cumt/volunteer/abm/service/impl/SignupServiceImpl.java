@@ -85,4 +85,25 @@ public class SignupServiceImpl extends ServiceImpl<SignupMapper, Signup> impleme
         return list(new LambdaQueryWrapper<Signup>()
                 .eq(Signup::getActivityId, activityId));
     }
+
+    @Override
+    @Transactional
+    public void reviewSignup(Long signupId, String action, String reason) {
+        Signup signup = getById(signupId);
+        if (signup == null) {
+            throw new RuntimeException("报名记录不存在");
+        }
+        if (!"signed".equals(signup.getStatus())) {
+            throw new RuntimeException("该报名记录状态不允许审核");
+        }
+        if ("approve".equals(action)) {
+            signup.setStatus("approved");
+        } else if ("reject".equals(action)) {
+            signup.setStatus("rejected");
+            signup.setReviewReason(reason);
+        } else {
+            throw new RuntimeException("无效的审核操作: " + action);
+        }
+        updateById(signup);
+    }
 }

@@ -26,8 +26,14 @@ public class User {
     /** 手机号 */
     private String phone;
 
-    /** 角色：student / admin */
+    /** 角色：student / organizer / admin */
     private String role;
+
+    /** 所属机构（组织者填写） */
+    private String organization;
+
+    /** 工号（组织者填写） */
+    private String employeeId;
 
     /** 累计志愿时长 */
     private BigDecimal totalHours;

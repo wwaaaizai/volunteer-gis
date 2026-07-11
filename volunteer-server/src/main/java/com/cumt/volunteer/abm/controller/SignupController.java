@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/signups")
@@ -47,11 +48,32 @@ public class SignupController {
     }
 
     /**
-     * 查看活动报名名单（管理员）
+     * 查看活动报名名单（管理员 / 组织者）
      */
     @GetMapping("/activity/{activityId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
     public Result<List<Signup>> getActivitySignups(@PathVariable Long activityId) {
         return Result.ok(signupService.getActivitySignups(activityId));
+    }
+
+    /**
+     * 审核报名（通过/拒绝）
+     * 请求体：{ "action": "approve" | "reject", "reason": "..." }
+     */
+    @PutMapping("/{id}/review")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
+    public Result<?> reviewSignup(@PathVariable Long id,
+                               @RequestBody Map<String, String> body) {
+        String action = body.get("action");
+        String reason = body.getOrDefault("reason", "");
+        if (action == null || action.isEmpty()) {
+            return Result.error(400, "审核操作不能为空");
+        }
+        try {
+            signupService.reviewSignup(id, action, reason);
+            return Result.ok("审核完成");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
     }
 }
