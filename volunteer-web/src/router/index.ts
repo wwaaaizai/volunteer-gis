@@ -43,6 +43,12 @@ const routes = [
         meta: { title: '签到' },
       },
       {
+        path: 'my-footprint',
+        name: 'MyFootprint',
+        component: () => import('@/views/MyFootprint.vue'),
+        meta: { title: '志愿足迹' },
+      },
+      {
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/Admin.vue'),

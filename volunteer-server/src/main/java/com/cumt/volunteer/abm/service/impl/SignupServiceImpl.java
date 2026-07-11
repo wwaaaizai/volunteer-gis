@@ -12,7 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -84,5 +85,35 @@ public class SignupServiceImpl extends ServiceImpl<SignupMapper, Signup> impleme
     public List<Signup> getActivitySignups(Long activityId) {
         return list(new LambdaQueryWrapper<Signup>()
                 .eq(Signup::getActivityId, activityId));
+    }
+
+    @Override
+    public List<Map<String, Object>> getFootprintData(Long userId) {
+        // 查询有签到坐标的记录，按签到时间排序
+        List<Signup> signups = list(new LambdaQueryWrapper<Signup>()
+                .eq(Signup::getUserId, userId)
+                .isNotNull(Signup::getSignInLng)
+                .isNotNull(Signup::getSignInLat)
+                .orderByAsc(Signup::getSignInTime));
+
+        // 收集activityIds批量查询活动名
+        Set<Long> activityIds = signups.stream()
+                .map(Signup::getActivityId).collect(Collectors.toSet());
+        Map<Long, String> titleMap = new HashMap<>();
+        if (!activityIds.isEmpty()) {
+            activityMapper.selectBatchIds(activityIds)
+                .forEach(a -> titleMap.put(a.getId(), a.getTitle()));
+        }
+
+        return signups.stream().map(s -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("activityId", s.getActivityId());
+            m.put("activityTitle", titleMap.getOrDefault(s.getActivityId(), "未知活动"));
+            m.put("lng", s.getSignInLng());
+            m.put("lat", s.getSignInLat());
+            m.put("signInTime", s.getSignInTime() != null ? s.getSignInTime().toString() : null);
+            m.put("volunteerHours", s.getVolunteerHours());
+            return m;
+        }).collect(Collectors.toList());
     }
 }

@@ -65,6 +65,15 @@ public class ActivityController {
     }
 
     /**
+     * 附近活动推荐：按 GPS 坐标距离排序已发布活动
+     */
+    @GetMapping("/nearby")
+    public Result<List<Activity>> nearbyActivities(@RequestParam double lng,
+                                                    @RequestParam double lat) {
+        return Result.ok(activityService.listNearby(lng, lat));
+    }
+
+    /**
      * 我的活动列表（组织者视角，按状态筛选）
      */
     @GetMapping("/my")

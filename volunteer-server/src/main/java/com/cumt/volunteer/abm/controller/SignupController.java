@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/signups")
@@ -53,5 +54,14 @@ public class SignupController {
     @PreAuthorize("hasAnyRole('admin','organizer')")
     public Result<List<Signup>> getActivitySignups(@PathVariable Long activityId) {
         return Result.ok(signupService.getActivitySignups(activityId));
+    }
+
+    /**
+     * 志愿足迹：返回当前用户的所有签到记录（含坐标，用于地图展示）
+     */
+    @GetMapping("/my-footprint")
+    public Result<List<Map<String, Object>>> getMyFootprint(
+            @AuthenticationPrincipal CurrentUser user) {
+        return Result.ok(signupService.getFootprintData(user.getUserId()));
     }
 }

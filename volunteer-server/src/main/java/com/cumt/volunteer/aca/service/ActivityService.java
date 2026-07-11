@@ -35,4 +35,9 @@ public interface ActivityService extends IService<Activity> {
      * 保存签到地理围栏（GeoJSON Polygon）
      */
     void saveGeofence(Long activityId, String geojson);
+
+    /**
+     * 附近活动推荐：按距离排序已发布活动
+     */
+    List<Activity> listNearby(double lng, double lat);
 }
