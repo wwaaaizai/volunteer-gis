@@ -5,15 +5,21 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cumt.volunteer.aca.mapper.ActivityMapper;
 import com.cumt.volunteer.aca.service.ActivityService;
 import com.cumt.volunteer.entity.Activity;
+import com.cumt.volunteer.geo.model.GeoPoint;
+import com.cumt.volunteer.geo.service.SpatialCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> implements ActivityService {
+
+    private final SpatialCalculator spatialCalculator;
 
     @Override
     public void createActivity(Activity activity, Long creatorId) {
@@ -84,5 +90,27 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             return;
         }
         throw new RuntimeException("该状态的活动不可编辑");
+    }
+    @Override
+    public void saveGeofence(Long activityId, String geojson) {
+        Activity activity = getById(activityId);
+        if (activity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        activity.setCheckinRegion(geojson);
+        updateById(activity);
+    }
+
+    @Override
+    public List<Activity> listNearby(double lng, double lat) {
+        GeoPoint userPoint = GeoPoint.of(lng, lat);
+        return list(new LambdaQueryWrapper<Activity>()
+                .eq(Activity::getStatus, "published"))
+                .stream()
+                .filter(a -> a.getLongitude() != null && a.getLatitude() != null)
+                .sorted(Comparator.comparingDouble(a ->
+                        spatialCalculator.distanceMeters(userPoint,
+                                GeoPoint.of(a.getLongitude(), a.getLatitude()))))
+                .collect(Collectors.toList());
     }
 }

@@ -123,6 +123,58 @@ public class SpatialCalculator {
         return isWithinCampusGcj02(gcj02[0], gcj02[1]);
     }
 
+    // ──── 射线法多边形判定（签到围栏）─────────────────
+
+    /**
+     * 射线法判断点是否在多边形内（P2-AM 签到地理围栏）。
+     *
+     * <p>从待测点向右发射水平射线，统计与多边形边的交点数：
+     * 奇数 → 内部，偶数 → 外部。</p>
+     *
+     * @param lng    待测点经度
+     * @param lat    待测点纬度
+     * @param polygon 多边形顶点数组 [[lng1,lat1], [lng2,lat2], ...]
+     * @return true 表示点在多边形内部或边上
+     */
+    public boolean isPointInPolygon(double lng, double lat, double[][] polygon) {
+        if (polygon == null || polygon.length < 3) return false;
+        int n = polygon.length;
+        boolean inside = false;
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = polygon[i][0], yi = polygon[i][1];
+            double xj = polygon[j][0], yj = polygon[j][1];
+            // 射线与边相交判断
+            if ((yi > lat) != (yj > lat)
+                    && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
+    /**
+     * 从 GeoJSON Polygon JSON 字符串解析多边形顶点。
+     * 格式：{"type":"Polygon","coordinates":[[[lng,lat],...]]}
+     */
+    public double[][] parsePolygonFromGeoJson(String geoJson) {
+        if (geoJson == null || geoJson.isBlank()) return null;
+        try {
+            // 简单解析：提取最内层 [[...]] 中的坐标对
+            String content = geoJson.replaceAll(".*?\\[\\[\\[", "")
+                                     .replaceAll("\\]\\]\\].*", "");
+            String[] pairs = content.split("\\],\\[");
+            double[][] polygon = new double[pairs.length][2];
+            for (int i = 0; i < pairs.length; i++) {
+                String[] xy = pairs[i].trim().split(",");
+                polygon[i][0] = Double.parseDouble(xy[0].trim());
+                polygon[i][1] = Double.parseDouble(xy[1].trim());
+            }
+            return polygon;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // ──── Haversine 核心实现 ──────────────────────────
 
     private double haversine(double lat1, double lng1, double lat2, double lng2) {

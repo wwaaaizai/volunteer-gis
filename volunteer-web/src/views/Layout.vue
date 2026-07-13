@@ -13,6 +13,7 @@
           <el-menu-item index="/">活动地图</el-menu-item>
           <el-menu-item index="/my-signups">我的报名</el-menu-item>
           <el-menu-item index="/checkin">签到</el-menu-item>
+          <el-menu-item index="/my-footprint">志愿足迹</el-menu-item>
           <el-menu-item index="/admin" v-if="isAdmin">管理后台</el-menu-item>
           <el-menu-item index="/organizer" v-if="isOrganizer">组织者后台</el-menu-item>
         </el-menu>

@@ -7,10 +7,9 @@ import { wgs84ToGcj02 } from '@/utils/coordConvert'
  * <p>原先天地图 Key、中心点、zoom 等全部硬编码在 {@code Map.vue}，
  * 现统一收敛至此，便于多页面复用与切换图商。</p>
  *
- * <p><b>配置外置</b>：天地图 Key 通过 Vite 环境变量 {@code VITE_TIANDITU_KEY} 注入，
- * 见 {@code .env / .env.example}。</p>
+ * <p><b>配置外置</b>：天地图 Key 通过 Vite 环境变量 {@code VITE_TIANDITU_KEY} 注入。</p>
  *
- * <p><b>坐标说明</b>：数据库存储 WGS-84，地图显示时转为 GCJ-02 对齐天地图底图。</p>
+ * <p><b>坐标说明</b>：数据库存储 WGS-84，地图显示 GCJ-02 对齐天地图底图。</p>
  */
 
 // WGS-84 原始坐标（由 GCJ-02 [117.140,34.215] 反推）
@@ -48,7 +47,6 @@ export const TIANDITU_KEY = import.meta.env.VITE_TIANDITU_KEY || ''
 
 /**
  * 构造天地图 MapLibre style（底图 + 注记）。
- * 引入第二个图商时，可在此提供高德/百度等替代 style 工厂。
  */
 export function buildTiandituStyle(key: string = TIANDITU_KEY): StyleSpecification {
   return {

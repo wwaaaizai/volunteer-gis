@@ -26,7 +26,7 @@
       <el-table-column prop="locationName" label="地点" width="120" />
       <el-table-column prop="signedCount" label="报名" width="60" />
       <el-table-column prop="maxParticipants" label="上限" width="60" />
-      <el-table-column label="操作" width="240">
+      <el-table-column label="操作" width="300">
         <template #default="{ row }">
           <el-button size="small" @click="$router.push(`/organizer/activity/${row.id}`)">
             详情
@@ -46,6 +46,10 @@
             @click="publishActivity(row.id)"
           >
             发布
+          </el-button>
+          <el-button size="small" type="warning"
+            @click="$router.push(`/organizer/geofence/${row.id}`)">
+            围栏
           </el-button>
         </template>
       </el-table-column>

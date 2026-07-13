@@ -3,6 +3,7 @@ package com.cumt.volunteer.abm.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cumt.volunteer.entity.Signup;
 import java.util.List;
+import java.util.Map;
 
 public interface SignupService extends IService<Signup> {
 
@@ -30,4 +31,9 @@ public interface SignupService extends IService<Signup> {
      * 审核报名（通过/拒绝）
      */
     void reviewSignup(Long signupId, String action, String reason);
+
+    /**
+     * 志愿足迹：返回用户的签到坐标+时间线
+     */
+    List<Map<String, Object>> getFootprintData(Long userId);
 }

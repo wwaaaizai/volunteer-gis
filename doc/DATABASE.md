@@ -24,7 +24,9 @@ user (1) ──────< signup >────── (1) activity
 | password | VARCHAR(255) | NN | bcrypt($2a$10$...) |
 | name | VARCHAR(64) | NN | 姓名 |
 | phone | VARCHAR(16) | | 手机号 |
-| role | VARCHAR(16) | NN, DEFAULT 'student' | student / admin |
+| role | VARCHAR(16) | NN, DEFAULT 'student' | student / organizer / admin |
+| organization | VARCHAR(64) | | 所属机构（组织者填写） |
+| employee_id | VARCHAR(32) | | 工号（组织者填写） |
 | total_hours | DECIMAL(8,1) | NN, DEFAULT 0 | 累计志愿时长 |
 | deleted | TINYINT(1) | NN, DEFAULT 0 | MyBatis-Plus 逻辑删除 |
 | created_at | DATETIME | NN, DEFAULT NOW() | |
@@ -53,6 +55,10 @@ user (1) ──────< signup >────── (1) activity
 | cover_image | VARCHAR(255) | | 封面图片路径 |
 | status | VARCHAR(16) | NN, DEFAULT 'draft' | 见状态枚举 |
 | creator_id | BIGINT | | FK → user.id |
+| organizer_id | BIGINT | | FK → user.id，组织者ID |
+| category | VARCHAR(32) | | 活动分类：environmental/support/education/community/campus/other |
+| tags | VARCHAR(255) | | 活动标签，逗号分隔 |
+| checkin_region | TEXT | | 签到围栏 GeoJSON Polygon（JSON字符串，null则使用500m圆形兜底） |
 | deleted | TINYINT(1) | NN, DEFAULT 0 | |
 | created_at | DATETIME | NN | |
 | updated_at | DATETIME | NN | |
@@ -77,6 +83,7 @@ user (1) ──────< signup >────── (1) activity
 | sign_out_lat | DECIMAL(10,7) | | 签退纬度 |
 | volunteer_hours | DECIMAL(5,1) | | 志愿时长（h），保留1位 |
 | hour_verified | TINYINT(1) | NN, DEFAULT 0 | 时长是否已审核 |
+| review_reason | VARCHAR(255) | | 拒绝理由 |
 | created_at | DATETIME | NN | |
 
 **索引**: `idx_activity(activity_id)`, `idx_user(user_id)`, `idx_user_activity(user_id, activity_id)`
@@ -99,7 +106,39 @@ user (1) ──────< signup >────── (1) activity
 
 ---
 
-## 6. 状态枚举
+## 6. `organizer_apply` 组织者申请表
+
+| 列名 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| user_id | BIGINT | NN | FK → user.id |
+| organization | VARCHAR(64) | | 所属机构 |
+| reason | TEXT | | 申请理由 |
+| status | VARCHAR(16) | NN, DEFAULT 'pending' | pending/approved/rejected |
+| reviewed_by | BIGINT | | FK → user.id，审核管理员ID |
+| created_at | DATETIME | NN | |
+| updated_at | DATETIME | NN | |
+
+**索引**: `idx_user(user_id)`, `idx_status(status)`
+
+---
+
+## 7. `operation_log` 操作日志表
+
+| 列名 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| user_id | BIGINT | NN | FK → user.id |
+| operation_type | VARCHAR(32) | | create_activity/edit_activity/publish_activity |
+| description | VARCHAR(255) | | 操作描述 |
+| activity_id | BIGINT | | FK → activity.id |
+| created_at | DATETIME | NN | |
+
+**索引**: `idx_user(user_id)`, `idx_created(created_at)`
+
+---
+
+## 8. 状态枚举
 
 ### Activity.status
 ```
@@ -112,7 +151,9 @@ cancelled → 已取消
 
 ### Signup.status
 ```
-signed     → 已报名
+signed     → 已报名（待审核）
+approved   → 已通过（审核通过，可参与活动）
+rejected   → 已拒绝（审核未通过）
 signed_in  → 已签到
 signed_out → 已签退
 cancelled  → 已取消
@@ -120,8 +161,9 @@ cancelled  → 已取消
 
 ### User.role
 ```
-student → 学生（默认角色）
-admin   → 管理员（维护。初始账号 admin/admin123 由 DataInitializer 注入）
+student   → 学生（默认角色）
+organizer → 组织者（可创建/管理活动）
+admin     → 管理员（维护。初始账号 admin/admin123 由 DataInitializer 注入）
 ```
 
 ### Message.type
@@ -140,4 +182,4 @@ signin  → 签到相关
 mysql -u root -p < volunteer-server/src/main/resources/db/init.sql
 ```
 
-该脚本创建 `volunteer_db` 数据库 + 4 张表。管理员初始账号由 Spring Boot 启动时 `DataInitializer`（`ApplicationRunner`）自动创建，无需手动 INSERT。
+该脚本创建 `volunteer_db` 数据库 + 6 张表。管理员初始账号由 Spring Boot 启动时 `DataInitializer`（`ApplicationRunner`）自动创建，无需手动 INSERT。

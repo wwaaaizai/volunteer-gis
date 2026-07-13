@@ -76,4 +76,13 @@ public class SignupController {
             return Result.error(e.getMessage());
         }
     }
+
+    /**
+     * 志愿足迹：返回当前用户的所有签到记录（含坐标，用于地图展示）
+     */
+    @GetMapping("/my-footprint")
+    public Result<List<Map<String, Object>>> getMyFootprint(
+            @AuthenticationPrincipal CurrentUser user) {
+        return Result.ok(signupService.getFootprintData(user.getUserId()));
+    }
 }

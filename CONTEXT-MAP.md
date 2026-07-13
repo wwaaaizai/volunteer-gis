@@ -8,7 +8,8 @@
 |------|------|------|----------|
 | AI 上下文 | `doc/AI_CONTEXT.md` | 项目全貌速览、架构、技术栈、业务规则、文件映射 | **开始任何编码工作前必读** |
 | API 参考 | `doc/API_REFERENCE.md` | 18 个 REST 端点的完整请求/响应格式 | 修改后端 API 或前端请求时 |
-| 数据库参考 | `doc/DATABASE.md` | 4 张表 DDL、索引、状态枚举、表关系 | 修改数据库结构或查询逻辑时 |
+| 数据库参考 | `doc/DATABASE.md` | 6 张表 DDL、索引、状态枚举、表关系 | 修改数据库结构或查询逻辑时 |
+| 数据库迁移指引 | `doc/DATABASE_MIGRATIONS.md` | 增量变更日志、各 Phase 同步 SQL、验证方法 | **拉取新代码后遇到数据库报错时** |
 | 前端结构 | `doc/FRONTEND_STRUCTURE.md` | 路由、组件树、Pinia 状态、Axios 拦截器、交互流程 | 修改前端组件或状态管理时 |
 | ADR 格式 | `doc/ADR-FORMAT.md` | 架构决策记录的写作格式规范 | 创建新的 ADR 时 |
 

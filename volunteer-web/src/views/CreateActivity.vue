@@ -1,7 +1,6 @@
 <template>
   <div class="create-activity">
     <h2>{{ isEdit ? '编辑活动' : '创建活动' }}</h2>
-
     <!-- ===== 模板选择面板 ===== -->
     <div class="template-bar" v-if="!isEdit">
       <el-button @click="showTemplatePanel = true" :icon="DocumentCopy">
@@ -287,7 +286,10 @@ const rules = {
   maxParticipants: [{ required: true, message: '请设置报名上限', trigger: 'blur' }],
 }
 
+/** 上传地址（Vite 代理到后端） */
 const uploadUrl = '/api/upload/image'
+
+/** 上传请求头（附带 Token） */
 const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
 }))
@@ -435,6 +437,8 @@ function onUploadError() {
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+
+  // 基本校验：经纬度必须填
   if (!form.longitude || !form.latitude) {
     ElMessage.warning('请在地图上点击选择活动位置')
     return
@@ -464,8 +468,13 @@ async function handleSubmit() {
   finally { submitting.value = false }
 }
 
+/** 返回上一页 */
 function goBack() {
-  router.push(route.path.includes('organizer') ? '/organizer' : '/admin')
+  if (route.path.includes('organizer')) {
+    router.push('/organizer')
+  } else {
+    router.push('/admin')
+  }
 }
 </script>
 

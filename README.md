@@ -114,6 +114,8 @@ npm run dev
 终端2（后端，端口 9090）：
     cd volunteer-server
     mvnw.cmd spring-boot:run -Dspring-boot.run.arguments=--server.port=9090
+     # powershell
+    .\mvnw.cmd spring-boot:run "-Dserver.port=9090"
     # 看到 "Started VolunteerApplication" 表示启动成功
 
 终端3（前端，端口 5173）：

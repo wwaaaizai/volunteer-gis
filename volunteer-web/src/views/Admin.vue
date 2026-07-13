@@ -13,13 +13,16 @@
           <el-table-column prop="title" label="活动标题" />
           <el-table-column prop="status" label="状态" width="100" />
           <el-table-column prop="signedCount" label="报名人数" width="100" />
-          <el-table-column label="操作" width="280">
+          <el-table-column label="操作" width="340">
             <template #default="{ row }">
               <el-button v-if="row.status === 'draft'" size="small" @click="publishActivity(row.id)">
                 发布
               </el-button>
               <el-button size="small" @click="$router.push(`/activity/${row.id}`)">详情</el-button>
               <el-button size="small" type="success" @click="showQRCode(row)">签到码</el-button>
+              <el-button size="small" type="warning" @click="$router.push(`/admin/geofence/${row.id}`)">
+                围栏
+              </el-button>
             </template>
           </el-table-column>
         </el-table>

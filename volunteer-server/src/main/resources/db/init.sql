@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS `activity` (
     organizer_id     BIGINT                               COMMENT '组织者ID',
     category         VARCHAR(32)                          COMMENT '活动分类：environmental/support/education/community/campus/other',
     tags             VARCHAR(255)                         COMMENT '活动标签，逗号分隔',
+    checkin_region   TEXT                                  COMMENT '签到围栏 GeoJSON Polygon（JSON字符串，null则使用500m圆形兜底）',
     deleted          TINYINT(1)     NOT NULL DEFAULT 0    COMMENT '逻辑删除',
     created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS `signup` (
     sign_out_lng     DECIMAL(11,7)                       COMMENT '签退经度',
     sign_out_lat     DECIMAL(10,7)                       COMMENT '签退纬度',
     volunteer_hours  DECIMAL(5,1)                        COMMENT '志愿时长（小时）',
+    review_reason    VARCHAR(255)                         COMMENT '拒绝理由',
     hour_verified    TINYINT(1)     NOT NULL DEFAULT 0   COMMENT '时长是否已审核',
     created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_activity (activity_id),
@@ -126,14 +128,33 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     INDEX idx_user (user_id),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
-
 -- -------------------------------------------
 -- Phase 2 ACA 增量迁移：activity 表新增字段
 -- -------------------------------------------
-ALTER TABLE activity
-  ADD COLUMN IF NOT EXISTS organizer_id BIGINT COMMENT '组织者ID' AFTER creator_id,
-  ADD COLUMN IF NOT EXISTS category VARCHAR(32) COMMENT '活动分类' AFTER organizer_id,
-  ADD COLUMN IF NOT EXISTS tags VARCHAR(255) COMMENT '活动标签，逗号分隔' AFTER category;
+
+-- organizer_id
+SET @col_o = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'organizer_id');
+SET @sql_o = IF(@col_o = 0,
+  'ALTER TABLE activity ADD COLUMN organizer_id BIGINT COMMENT ''组织者ID'' AFTER creator_id',
+  'SELECT ''Column organizer_id already exists''');
+PREPARE stmt_o FROM @sql_o; EXECUTE stmt_o; DEALLOCATE PREPARE stmt_o;
+
+-- category
+SET @col_c = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'category');
+SET @sql_c = IF(@col_c = 0,
+  'ALTER TABLE activity ADD COLUMN category VARCHAR(32) COMMENT ''活动分类'' AFTER organizer_id',
+  'SELECT ''Column category already exists''');
+PREPARE stmt_c FROM @sql_c; EXECUTE stmt_c; DEALLOCATE PREPARE stmt_c;
+
+-- tags
+SET @col_t = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'tags');
+SET @sql_t = IF(@col_t = 0,
+  'ALTER TABLE activity ADD COLUMN tags VARCHAR(255) COMMENT ''活动标签，逗号分隔'' AFTER category',
+  'SELECT ''Column tags already exists''');
+PREPARE stmt_t FROM @sql_t; EXECUTE stmt_t; DEALLOCATE PREPARE stmt_t;
 
 -- 为已有活动补全新增字段默认值
 UPDATE activity SET organizer_id = creator_id WHERE organizer_id IS NULL;
@@ -144,6 +165,46 @@ UPDATE activity SET tags = '' WHERE tags IS NULL;
 -- Phase 3 增量迁移：报名审核 + AI 功能支撑
 -- ============================================
 
--- signup 表新增拒绝理由字段
-ALTER TABLE signup
-  ADD COLUMN IF NOT EXISTS review_reason VARCHAR(255) COMMENT '拒绝理由';
+-- signup 表新增拒绝理由字段（INFORMATION_SCHEMA 兼容检测）
+SET @col_rr = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'signup' AND COLUMN_NAME = 'review_reason');
+SET @sql_rr = IF(@col_rr = 0,
+  'ALTER TABLE signup ADD COLUMN review_reason VARCHAR(255) COMMENT ''拒绝理由''',
+  'SELECT ''Column review_reason already exists''');
+PREPARE stmt_rr FROM @sql_rr;
+EXECUTE stmt_rr;
+DEALLOCATE PREPARE stmt_rr;
+
+-- -------------------------------------------
+-- Phase 2 UPM 增量迁移：user 表新增字段
+-- -------------------------------------------
+
+-- organization
+SET @col_org = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'user' AND COLUMN_NAME = 'organization');
+SET @sql_org = IF(@col_org = 0,
+  'ALTER TABLE `user` ADD COLUMN organization VARCHAR(64) COMMENT ''所属机构（组织者填写）'' AFTER role',
+  'SELECT ''Column organization already exists''');
+PREPARE stmt_org FROM @sql_org; EXECUTE stmt_org; DEALLOCATE PREPARE stmt_org;
+
+-- employee_id
+SET @col_ei = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'user' AND COLUMN_NAME = 'employee_id');
+SET @sql_ei = IF(@col_ei = 0,
+  'ALTER TABLE `user` ADD COLUMN employee_id VARCHAR(32) COMMENT ''工号（组织者填写）'' AFTER organization',
+  'SELECT ''Column employee_id already exists''');
+PREPARE stmt_ei FROM @sql_ei; EXECUTE stmt_ei; DEALLOCATE PREPARE stmt_ei;
+
+-- ============================================
+-- Phase 4 增量迁移：签到地理围栏（P2-AM）
+-- ============================================
+
+-- activity 表新增签到围栏字段（INFORMATION_SCHEMA 兼容检测）
+SET @col_cr = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'checkin_region');
+SET @sql_cr = IF(@col_cr = 0,
+  'ALTER TABLE activity ADD COLUMN checkin_region TEXT COMMENT ''签到围栏 GeoJSON Polygon（JSON字符串）''',
+  'SELECT ''Column checkin_region already exists''');
+PREPARE stmt_cr FROM @sql_cr;
+EXECUTE stmt_cr;
+DEALLOCATE PREPARE stmt_cr;
