@@ -6,7 +6,11 @@ import {
   DEFAULT_ZOOM,
   MIN_ZOOM,
   MAX_ZOOM,
+  SATELLITE_MAX_ZOOM,
   CAMPUS_BOUNDS_GCJ02,
+  STANDARD_LAYER_IDS,
+  SATELLITE_LAYER_IDS,
+  type BaseMapMode,
 } from '@/config/map'
 
 export interface UseMapOptions {
@@ -73,6 +77,48 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
     }
   }
 
+  const currentBaseMap = ref<BaseMapMode>('standard')
+
+  /** 底图标准/卫星切换（不销毁矢量图层） */
+  function switchBaseMap(mode: BaseMapMode) {
+    const m = map.value
+    if (!m || mode === currentBaseMap.value) return
+
+    const style = m.getStyle()
+    if (!style) return
+
+    // 找到第一个非底图图层，用于将瓦片插入正确位置
+    const allBasemapIds = [...STANDARD_LAYER_IDS, ...SATELLITE_LAYER_IDS]
+    const firstOther = style.layers.find((l) => !allBasemapIds.includes(l.id))
+
+    if (mode === 'satellite') {
+      // 移除标准底图
+      for (const id of STANDARD_LAYER_IDS) {
+        try { if (m.getLayer(id)) m.removeLayer(id) } catch { /* */ }
+      }
+      // 添加卫星底图（插入到矢量图层之前）
+      m.addLayer({ id: 'tianditu-img', type: 'raster', source: 'tianditu-img' }, firstOther?.id)
+      m.addLayer({ id: 'tianditu-cia', type: 'raster', source: 'tianditu-cia' }, firstOther?.id)
+      // 卫星影像在校园级通常仅到 18 级，降低最大缩放
+      m.setMaxZoom(SATELLITE_MAX_ZOOM)
+      if (m.getZoom() > SATELLITE_MAX_ZOOM) {
+        m.zoomTo(SATELLITE_MAX_ZOOM)
+      }
+    } else {
+      // 移除卫星底图
+      for (const id of SATELLITE_LAYER_IDS) {
+        try { if (m.getLayer(id)) m.removeLayer(id) } catch { /* */ }
+      }
+      // 恢复标准底图
+      m.addLayer({ id: 'tianditu-vec', type: 'raster', source: 'tianditu-vec' }, firstOther?.id)
+      m.addLayer({ id: 'tianditu-cva', type: 'raster', source: 'tianditu-cva' }, firstOther?.id)
+      // 恢复标准最大缩放
+      m.setMaxZoom(MAX_ZOOM)
+    }
+
+    currentBaseMap.value = mode
+  }
+
   function destroy() {
     if (map.value) {
       map.value.remove()
@@ -83,5 +129,5 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
 
   onUnmounted(destroy)
 
-  return { map, mapReady, init, destroy }
+  return { map, mapReady, currentBaseMap, init, destroy, switchBaseMap }
 }

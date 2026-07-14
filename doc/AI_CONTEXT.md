@@ -11,7 +11,7 @@
 |------|------|
 | **名称** | 基于GIS的校园志愿活动服务系统（volunteer-gis） |
 | **目标** | 为中国矿业大学学生提供志愿活动的 GIS 地图浏览、报名、定位签到/签退的 Web 系统 |
-| **当前阶段** | MVP（Phase 1：后端 + Web 前端），小程序搁置 |
+| **当前阶段** | Phase 2 主体完成，GeoServer WFS 图层集成已实现（前端 WFS + GCJ-02 坐标变换零偏移叠加） |
 | **编码** | GBK（本地），UTF-8（项目源文件） |
 
 ---
@@ -29,7 +29,8 @@
 | 构建工具 | Vite | 5.1+ | 开发端口 5173 |
 | UI 组件 | Element Plus | 2.5+ | |
 | GIS 地图 | MapLibre GL JS | 4.0+ | WebGL 矢量渲染 |
-| 底图 | 天地图 API | — | WMTS 瓦片 |
+| 底图 | 天地图 API | — | WMTS 瓦片（GCJ-02） |
+| GIS 服务 | GeoServer | 2.24+ | WFS 矢量服务（EPSG:4326 → 前端 GCJ-02 变换） |
 | 状态管理 | Pinia | 2.1+ | |
 
 ---
@@ -63,105 +64,140 @@
      → JwtUtils.parseToken() 解析 → CurrentUser(userId, studentId, role)
      → SecurityContextHolder 设置认证
      → SecurityConfig 规则:
-        - /api/auth/** → permitAll（注册、登录）
+        - /api/auth/** → permitAll（注册、登录、组织者申请）
         - /uploads/** → permitAll
+        - /api/map/** → permitAll（地图数据公开）
         - 其他 → 需认证
-     → 管理员接口: @PreAuthorize("hasRole('admin')")
+     → 角色控制: @PreAuthorize("hasRole('admin')") 或 hasRole('organizer')
 ```
 
 **CurrentUser** 是自定义 Principal 对象，非数据库实体，仅含：
 - `userId` (Long)
 - `studentId` (String)
-- `role` (String: "student" | "admin")
+- `role` (String: "student" | "organizer" | "admin")
 
 ---
 
-## 5. 数据库 —— 4 张表
+## 5. 数据库 —— 6 张表
 
 | 表名 | 核心字段 | 关键索引 |
 |------|---------|---------|
-| `user` | id, student_id(UNIQUE), password(bcrypt), name, phone, role(student/admin), total_hours | idx_role |
-| `activity` | id, title, location_name, longitude/latitude(经纬度), signed_count, max_participants, status(draft/published/ongoing/ended/cancelled), creator_id | idx_status, idx_status_time, idx_creator |
-| `signup` | id, activity_id, user_id, status(signed/signed_in/signed_out/cancelled), sign_in_time/lng/lat, sign_out_time/lng/lat, volunteer_hours | idx_activity, idx_user, idx_user_activity |
+| `user` | id, student_id(UNIQUE), password(bcrypt), name, phone, role(student/organizer/admin), organization, employee_id, total_hours | idx_role |
+| `activity` | id, title, location_name, longitude/latitude(经纬度), start_time/end_time, signup_start/signup_end, signed_count, max_participants, cover_image, status(draft/published/ongoing/ended/cancelled), creator_id, organizer_id, category, tags, checkin_region(GeoJSON) | idx_status, idx_status_time, idx_creator |
+| `signup` | id, activity_id, user_id, status(signed/approved/rejected/signed_in/signed_out/cancelled), sign_in_time/lng/lat, sign_out_time/lng/lat, volunteer_hours, hour_verified, review_reason | idx_activity, idx_user, idx_user_activity |
 | `message` | id, user_id, title, content, type, is_read | idx_user_read |
+| `organizer_apply` | id, user_id, organization, reason, status(pending/approved/rejected), reviewed_by | idx_user, idx_status |
+| `operation_log` | id, user_id, operation_type, description, activity_id | idx_user, idx_created |
 
 DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resources/db/init.sql)
 
 ---
 
-## 6. API 总览 —— 14 个端点
+## 6. API 总览 —— 25+ 个端点
 
 ### 公开（无需登录）
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/auth/register` | 注册 |
+| POST | `/api/auth/register` | 注册（含组织者申请） |
 | POST | `/api/auth/login` | 登录 → 返回 JWT Token |
+| GET | `/api/map/activities` | GeoJSON FeatureCollection（已发布活动） |
+| GET | `/api/map/heatmap?category=&months=` | 活动热力图数据 |
+| GET | `/api/map/layers` | 可用 GIS 图层清单 |
+| GET | `/api/map/campus-bounds` | 校区边界坐标 |
 
 ### 需登录（学生）
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/auth/me` | 获取当前用户信息 |
-| GET | `/api/map/activities` | GeoJSON FeatureCollection（已发布活动） |
 | GET | `/api/activities` | 活动列表 |
 | GET | `/api/activities/{id}` | 活动详情 |
 | GET | `/api/activities/search?keyword=` | 搜索活动 |
+| GET | `/api/activities/nearby?lng=&lat=&radius=` | 附近活动推荐 |
 | POST | `/api/signups?activityId=` | 报名活动 |
 | DELETE | `/api/signups?activityId=` | 取消报名 |
 | GET | `/api/signups/my` | 我的报名记录 |
-| POST | `/api/checkin/location?activityId=&lng=&lat=` | 定位签到 |
+| GET | `/api/signups/my-footprint` | 志愿足迹数据 |
+| POST | `/api/checkin/location?activityId=&lng=&lat=` | 定位签到（支持围栏/圆形双重校验） |
 | POST | `/api/checkin/qr?activityId=&code=` | 扫码签到 |
 | POST | `/api/checkin/out?activityId=&lng=&lat=` | 签退 |
 
-### 需管理员
+### 需管理员/组织者
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/activities` | 创建活动 |
 | PUT | `/api/activities/{id}/publish` | 发布活动 |
+| PUT | `/api/activities/{id}` | 编辑活动 |
+| GET | `/api/activities/my` | 我的活动（组织者视角） |
+| PUT | `/api/activities/{id}/geofence` | 保存签到围栏（GeoJSON Polygon） |
+| GET | `/api/activities/{id}/geofence` | 获取签到围栏 |
 | GET | `/api/signups/activity/{activityId}` | 查看活动报名名单 |
-| GET | `/api/checkin/qrcode/{activityId}` | 生成签到二维码码 |
+| PUT | `/api/signups/{id}/review` | 审核报名（通过/拒绝） |
+| GET | `/api/checkin/qrcode/{activityId}` | 生成签到二维码 |
 | PUT | `/api/checkin/verify-hours/{signupId}` | 审核志愿时长 |
+
+### 需管理员
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/auth/organizer-applies` | 查看组织者申请列表 |
+| PUT | `/api/auth/organizer-applies/{id}/review` | 审批组织者申请 |
+| PUT | `/api/auth/profile` | 更新个人信息 |
 
 统一响应格式：`{ code: 200, message: "success", data: T }`（Result 类）
 
 ---
 
-## 7. 前端路由树 + 新增目录
+## 7. 前端路由树 + 组件目录
 
 ```
 /components/
   └── map/
       ├── BaseMap.vue          # 基础地图容器（封装 MapLibre + 天地图）
-      └── ActivityLayer.vue    # 活动点图层（GeoJSON → circle markers）
+      ├── ActivityLayer.vue    # 活动点图层（GeoJSON → circle markers）
+      ├── WfsLayer.vue         # GeoServer WFS 矢量图层（useWfsLayer → GeoJSON → GCJ-02）
+      ├── GeoServerLayer.vue   # GeoServer WMS 栅格图层（备选，有 GCJ-02 偏移）
+      ├── LayerControl.vue     # 图层控制面板（开关/透明度/状态）
+      ├── GeofenceEditor.vue   # 签到围栏交互绘制工具（多边形）
+      └── MapPicker.vue        # 地图选点组件
 /composables/
-  └── useMap.ts               # 地图实例生命周期管理（含 onUnmounted 清理）
+  ├── useMap.ts               # 地图实例生命周期管理（maxBounds/zoom 限制）
+  └── useWfsLayer.ts          # WFS 数据拉取 + GCJ-02 坐标递归变换
 /config/
-  └── map.ts                  # 集中地图配置（天地图 Key/中心/zoom，从 env 读取）
+  └── map.ts                  # 集中地图配置（天地图 Key/中心/zoom/边界/GeoServer 图层，从 env 读取）
 /types/
   └── geo.ts                  # GeoJSON TS 类型（FeatureCollection/Feature/Geometry）
+/utils/
+  └── coordConvert.ts         # WGS-84 ↔ GCJ-02 坐标转换
 .--- 视图 ---
 
-/login              → Login.vue       (guest only)
-/register           → Register.vue    (guest only)
-/                   → Layout.vue
-  ├─ /              → Map.vue         (地图主页，组合 BaseMap + ActivityLayer)
-  ├─ /activity/:id  → ActivityDetail.vue
-  ├─ /my-signups    → MySignups.vue
-  ├─ /checkin       → CheckIn.vue
-  └─ /admin         → Admin.vue       (role: admin)
-      └─ /admin/create-activity → CreateActivity.vue
+/login                  → Login.vue           (guest only)
+/register               → Register.vue        (guest only，含组织者申请选项)
+/                       → Layout.vue
+  ├─ /                  → Map.vue             (活动地图+热力图+GeoServer WFS图层，组合 BaseMap+ActivityLayer+WfsLayer+LayerControl)
+  ├─ /activity/:id      → ActivityDetail.vue  (活动详情+附近推荐)
+  ├─ /my-signups        → MySignups.vue       (我的报名)
+  ├─ /my-footprint      → MyFootprint.vue     (志愿足迹地图+时间线)
+  ├─ /checkin           → CheckIn.vue         (签到/签退)
+  ├─ /admin             → Admin.vue           (role: admin)
+  │   ├─ /admin/create-activity → CreateActivity.vue
+  │   └─ /admin/geofence/:id    → GeofenceEdit.vue
+  └─ /organizer         → OrganizerDashboard.vue  (role: organizer, admin)
+      ├─ /organizer/create      → CreateActivity.vue
+      ├─ /organizer/activity/:id → OrganizerActivityDetail.vue
+      ├─ /organizer/geofence/:id → GeofenceEdit.vue
+      └─ /organizer/profile     → OrganizerProfile.vue
 
 /mock/                              # MSW 前端 Mock（脱离后端独立运行）
   ├── README.md
   ├── browser.ts                    # setupWorker 入口
   ├── db.ts                         # 内存 DB（localStorage 持久化）
-  ├── data/seed.ts                  # 种子数据（8 活动，2 用户，4 报名）
-  └── handlers/                     # 17 个 API Handler
+  ├── data/seed.ts                  # 种子数据
+  └── handlers/                     # API Handler
       ├── auth.ts / activities.ts / map.ts / signups.ts / checkin.ts
 ```
 
 路由守卫逻辑：`router.beforeEach`
 1. 有 token 但无 user → 调 `/api/auth/me` 获取用户
-2. 访问 `meta.role === 'admin'` → 校验 role 是否为 admin
+2. 访问 `meta.roles: ['admin']` 或 `['admin', 'organizer']` → 校验 role 是否在数组内
 3. 已登录访问 guest 页 → 重定向到 /
 
 ---
@@ -170,22 +206,32 @@ DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resou
 
 ### 报名
 - 活动 status 必须为 `published`，signedCount < maxParticipants
+- 报名后状态为 `signed`，需组织者审核通过(`approved`)方可参加
 - @Transactional 包裹：插入 signup + signedCount++（原子操作）
 - 防止重复报名（LambdaQuery 查 user_id + activity_id）
 
 ### 签到
 - 定位签到：前端 `navigator.geolocation.getCurrentPosition()` 获取 GPS
-- 后端 Haversine 公式校验距离 ≤ 500m（中国矿业大学直径约2km）
+- **围栏优先**: 若活动设置了 `checkin_region`（GeoJSON Polygon），使用射线法判定 GPS 是否在多边形内
+- **圆形兜底**: 无围栏时，Haversine 公式校验距离 ≤ 500m
 - 扫码签到：Base64 解码 → 比对 `"CHECKIN:" + activityId`
 
 ### 签退
 - 状态必须为 `signed_in`
 - 自动计算志愿时长 = sign_out_time - sign_in_time → 转小时 → BigDecimal 保留1位
 
-### 管理员
-- 初始账号由 `DataInitializer` (ApplicationRunner) 创建：admin / admin123
-- 注册用户的默认角色：student
-- 管理员无法通过注册途径产生
+### 角色体系
+- 三种角色: `student`（默认）/ `organizer`（组织者）/ `admin`（管理员）
+- 组织者通过注册时申请 → 管理员审批产生
+- 组织者权限：创建/编辑/发布活动、查看报名名单、设置签到围栏、审核报名
+- 管理员权限：组织者权限超集 + 审批组织者申请 + 审核志愿时长
+- 初始账号由 `DataInitializer` 创建：admin/admin123、organizer/organizer123
+
+### 地图约束
+- 拖拽范围限制在矿大南湖校区（maxBounds GCJ-02）
+- 缩放限制 14~17 级（标准底图），17 级（卫星底图）
+- 底图支持标准/卫星图标切换，图层不随切换销毁
+- 数据库存 WGS-84，前端显示 GCJ-02（对齐天地图底图）
 
 ---
 
@@ -230,10 +276,11 @@ npm run dev
 
 | 状态 | 功能 |
 |------|------|
-|  已完成 | 用户注册/登录、JWT 鉴权、RBAC、活动 CRUD + 发布、GeoJSON API、活动地图、报名/取消、定位签到/签退、Haversine 距离校验、签退自动算时长 |
-|  新增 | 后端 `geo` 横切模块（SpatialCalculator/GeoJsonBuilder/ActivitySpatialRepository）、前端 Map 组件化（BaseMap/ActivityLayer/useMap）、地图配置外置（.env + config/map.ts）、配置占位（application.yml ${ENV}）、前端 MSW Mock（17 端点，localStorage 持久化，脱离后端运行） |
-|  待开发 | 封面图片上传、签到二维码前端生成、时长审核完整流程、站内信通知、状态定时更新（published→ongoing→ended） |
-|  Phase 2 | 小程序接入、审核工作流（院级→校级）、Redis 缓存、PostGIS 迁移（有 ActivitySpatialRepository 抽象锁，只换 Impl） |
+|  已完成 | 用户注册/登录、JWT 鉴权、三重 RBAC(student/organizer/admin)、活动 CRUD + 发布、GeoJSON API、活动地图、报名/取消、定位签到/签退（围栏+圆形）、Haversine 距离校验、射线法多边形判定、签退自动算时长 |
+|  Phase 2 已完成 | 组织者角色全链路（申请/审批/仪表盘）、活动分类/标签/封面上传、MapPicker 地图选点、GeofenceEditor 围栏绘制、签到围栏校验、活动热力图（按分类/时间筛选）、志愿足迹地图+时间线、附近活动推荐、报名审核(通过/拒绝)、校区边界限制(maxBounds+zoom)、操作日志表、AI 描述/封面生成 |
+|  已实现（GeoServer） | WFS 矢量图层叠加（useWfsLayer + wgs84ToGcj02 零偏移）、WmsLayer 栅格备选、建筑物默认隐藏+keepQueryable 点击选中高亮(P2-AM-08)、底图标准/卫星图标切换、建筑/运动场图标开关 |
+|  待开发 | GeoServer WMS 图层叠加、离线缓存(Service Worker)、活动模板功能、地图范围定时校验、PostGIS 迁移 |
+|  Phase 3 | Redis 缓存、小程序接入、3D 校园可视化、路径导航、实时位置共享 |
 
 ---
 
@@ -249,15 +296,35 @@ npm run dev
 | `volunteer-server/src/main/java/.../geo/service/SpatialCalculator.java` | Haversine 距离计算 |
 | `volunteer-server/src/main/java/.../geo/service/GeoJsonBuilder.java` | GeoJSON 构造器 |
 | `volunteer-server/src/main/java/.../geo/repository/ActivitySpatialRepository.java` | 空间查询抽象（PostGIS 锚点） |
+| `volunteer-server/src/main/java/.../entity/OrganizerApply.java` | 组织者申请实体 |
+| `volunteer-server/src/main/java/.../entity/OperationLog.java` | 操作日志实体 |
+| `volunteer-server/src/main/java/.../upm/controller/AuthController.java` | 认证控制器（权限管理+组织者管理） |
+| `volunteer-server/src/main/java/.../aca/controller/ActivityController.java` | 活动控制器 |
+| `volunteer-server/src/main/java/.../am/controller/MapController.java` | 地图控制器 |
+| `volunteer-server/src/main/java/.../abm/controller/SignupController.java` | 报名控制器 |
+| `volunteer-server/src/main/java/.../apm/controller/CheckInController.java` | 签到控制器 |
+| `volunteer-server/src/main/java/.../ai/controller/AiController.java` | AI 辅助控制器 |
 | `volunteer-web/vite.config.ts` | Vite 配置（代理+别名） |
 | `volunteer-web/.env.development` | 开发环境变量（已提交，默认开 Mock） |
 | `volunteer-web/.env.example` | 环境变量模板 |
 | `volunteer-web/src/config/map.ts` | 地图集中配置（key/center/zoom/style） |
 | `volunteer-web/src/types/geo.ts` | GeoJSON TS 类型 |
 | `volunteer-web/src/composables/useMap.ts` | MapLibre 实例生命周期 |
+| `volunteer-web/src/composables/useWfsLayer.ts` | WFS 数据拉取 + GCJ-02 坐标变换 |
 | `volunteer-web/src/components/map/BaseMap.vue` | 基础地图容器 |
 | `volunteer-web/src/components/map/ActivityLayer.vue` | 活动点图层 |
-| `volunteer-web/src/views/Map.vue` | 地图主页（组合 BaseMap+ActivityLayer） |
+| `volunteer-web/src/components/map/WfsLayer.vue` | GeoServer WFS 矢量图层（GeoJSON → GCJ-02） |
+| `volunteer-web/src/components/map/GeoServerLayer.vue` | GeoServer WMS 栅格图层（备选） |
+| `volunteer-web/src/components/map/LayerControl.vue` | 图层控制面板（开关/透明度） |
+| `volunteer-web/src/components/map/GeofenceEditor.vue` | 签到围栏绘制组件 |
+| `volunteer-web/src/components/map/MapPicker.vue` | 地图选点组件 |
+| `volunteer-web/src/utils/coordConvert.ts` | WGS-84 ↔ GCJ-02 坐标转换 |
+| `volunteer-web/src/views/Map.vue` | 地图主页（BaseMap+ActivityLayer+WfsLayer+热力图+底图切换+建筑开关+建筑点击高亮） |
+| `volunteer-web/src/views/GeofenceEdit.vue` | 围栏编辑页 |
+| `volunteer-web/src/views/MyFootprint.vue` | 志愿足迹页 |
+| `volunteer-web/src/views/OrganizerDashboard.vue` | 组织者仪表盘 |
+| `volunteer-web/src/views/OrganizerActivityDetail.vue` | 组织者活动详情 |
+| `volunteer-web/src/views/OrganizerProfile.vue` | 组织者个人信息 |
 | `volunteer-web/src/router/index.ts` | 路由表+守卫 |
 | `volunteer-web/src/stores/user.ts` | Pinia 用户状态 |
 | `volunteer-web/src/api/index.ts` | Axios 实例+拦截器 |

@@ -16,12 +16,12 @@ const props = withDefaults(
 
 /** 对外暴露地图就绪状态与实例，供父组件叠加图层 */
 const mapContainer = ref<HTMLElement>()
-const { map, mapReady, init } = useMap(mapContainer, {
+const { map, mapReady, currentBaseMap, init, switchBaseMap } = useMap(mapContainer, {
   center: props.center,
   zoom: props.zoom,
 })
 
-defineExpose({ map, mapReady })
+defineExpose({ map, mapReady, currentBaseMap, switchBaseMap })
 
 onMounted(init)
 </script>
