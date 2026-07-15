@@ -170,6 +170,19 @@ public class MapController {
         return Result.ok(mapService.clusterMeeting(activityId, k));
     }
 
+    // ──── 路径规划代理 ───────────────────────────────
+
+    /** 代理高德路径规划 API（解决前端 CORS 跨域问题） */
+    @GetMapping("/route")
+    public Result<Map<String, Object>> routeProxy(
+            @RequestParam String mode,
+            @RequestParam double originLng,
+            @RequestParam double originLat,
+            @RequestParam double destLng,
+            @RequestParam double destLat) {
+        return Result.ok(mapService.routeProxy(mode, originLng, originLat, destLng, destLat));
+    }
+
     // ──── 工具方法 ──────────────────────────────────────
 
     private Map<String, String> layer(String id, String name, String geometryType, String desc) {

@@ -15,6 +15,12 @@ import com.cumt.volunteer.geo.service.SpatialCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -299,5 +305,54 @@ public class MapServiceImpl implements MapService {
             if (!changed) break;
         }
         return centroids;
+    }
+
+    // ──── 路径规划代理 ───────────────────────────
+
+    private static final String AMAP_KEY = "a67d378a0935e039990063e7dd30378f";
+
+    @Override
+    public Map<String, Object> routeProxy(String mode, double originLng, double originLat,
+                                          double destLng, double destLat) {
+        try {
+            String apiUrl;
+            if ("foot".equals(mode)) {
+                apiUrl = "https://restapi.amap.com/v3/direction/walking?key=" + AMAP_KEY
+                       + "&origin=" + originLng + "," + originLat
+                       + "&destination=" + destLng + "," + destLat;
+            } else if ("bike".equals(mode)) {
+                apiUrl = "https://restapi.amap.com/v4/direction/bicycling?key=" + AMAP_KEY
+                       + "&origin=" + originLng + "," + originLat
+                       + "&destination=" + destLng + "," + destLat;
+            } else {
+                apiUrl = "https://restapi.amap.com/v3/direction/driving?key=" + AMAP_KEY
+                       + "&origin=" + originLng + "," + originLat
+                       + "&destination=" + destLng + "," + destLat;
+            }
+
+            URL url = new URL(apiUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            reader.close();
+            conn.disconnect();
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("raw", sb.toString());
+            result.put("mode", mode);
+            return result;
+        } catch (Exception e) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("error", e.getMessage());
+            error.put("mode", mode);
+            return error;
+        }
     }
 }

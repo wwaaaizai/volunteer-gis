@@ -389,19 +389,19 @@ async function runRoute() {
   const endGcj = wgs84ToGcj02(act.longitude, act.latitude)
 
   try {
-    const key = 'a67d378a0935e039990063e7dd30378f'
-    let url = ''
-    if (routeMode.value === 'foot') {
-      url = `https://restapi.amap.com/v3/direction/walking?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
-    } else if (routeMode.value === 'bike') {
-      url = `https://restapi.amap.com/v4/direction/bicycling?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
-    } else {
-      url = `https://restapi.amap.com/v3/direction/driving?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
+    // 通过后端代理调用高德API，解决CORS跨域问题
+    const resp = await request.get('/map/route', {
+      params: { mode: routeMode.value, originLng: startLng, originLat: startLat,
+                destLng: act.longitude, destLat: act.latitude }
+    }) as any
+    if (resp.error) {
+      ElMessage.warning('路径规划失败: ' + resp.error)
+      drawStraightLine(act, startLng, startLat, endGcj)
+      return
     }
-    const resp = await fetch(url)
-    const data = await resp.json()
+    const data = JSON.parse(resp.raw)
     if (data.status !== '1' || !data.route?.paths?.[0]) {
-      ElMessage.warning('路径规划失败: ' + (data.info || '未知错误'))
+      ElMessage.warning('路径规划失败: ' + (data.info || '起点与终点间无可通行道路'))
       drawStraightLine(act, startLng, startLat, endGcj)
       return
     }
