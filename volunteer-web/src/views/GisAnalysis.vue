@@ -137,8 +137,13 @@
             <el-button @click="clearRoute">取消</el-button>
           </el-form-item>
         </el-form>
-        <div class="gps-hint" v-if="routeFrom === 'gps' && !userLng">
-          <el-button size="small" type="success" @click="getGpsLocation">📍 获取我的位置</el-button>
+        <div class="gps-hint">
+          <el-button size="small" type="success" @click="getGpsLocation" v-if="!userLng">
+            📍 获取我的位置
+          </el-button>
+          <el-tag v-else type="success" effect="plain">
+            📍 GPS: {{ userLng.toFixed(5) }}, {{ userLat.toFixed(5) }}
+          </el-tag>
         </div>
         <BaseMap ref="routeMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <el-card v-if="routeResult" style="margin-top: 12px">
@@ -410,16 +415,19 @@ function drawRoute(geometry: any, act: any, startLng: number, startLat: number, 
   map.addSource(sid, { type: 'geojson', data: geometry })
   map.addLayer({
     id: lid, type: 'line', source: sid,
-    paint: { 'line-color': '#409eff', 'line-width': 4, 'line-opacity': 0.8 },
+    paint: { 'line-color': '#409eff', 'line-width': 5, 'line-opacity': 0.85 },
   })
 
-  // Add start/end markers
+  // Add start/end markers + fit bounds
   addRouteMarkers(map, startLng, startLat, endGcj)
+  const bounds = new (window as any).maplibregl.LngLatBounds()
+  geometry.coordinates.forEach((c: [number, number]) => bounds.extend(c as any))
+  map.fitBounds(bounds, { padding: 80, maxZoom: 17 })
 }
 
 function drawStraightLine(act: any, startLng: number, startLat: number, endGcj: [number, number]) {
   const map = routeMapRef.value?.map; if (!map) return
-  ElMessage.info('在线规划不可用，显示直线参考路径')
+  ElMessage.info('在线规划不可用，显示直线参考路径（OSRM 基于 Dijkstra 算法的路由引擎暂时无法连接）')
   const sid = 'route-path'; const lid = 'route-line'
   try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
   try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }
@@ -435,27 +443,45 @@ function drawStraightLine(act: any, startLng: number, startLat: number, endGcj: 
     paint: { 'line-color': '#ff6600', 'line-width': 3, 'line-dasharray': [6, 4] },
   })
   addRouteMarkers(map, startLng, startLat, endGcj)
-  // Estimate
+  const bounds = new (window as any).maplibregl.LngLatBounds()
+  bounds.extend([startLng, startLat]); bounds.extend(endGcj)
+  map.fitBounds(bounds, { padding: 80, maxZoom: 17 })
   const dist = Math.sqrt((endGcj[0]-startLng)**2 + (endGcj[1]-startLat)**2) * 111320
   routeResult.value = { distance: dist, duration: dist / 1.4 }
 }
 
 function addRouteMarkers(map: any, startLng: number, startLat: number, endGcj: [number, number]) {
   const msid = 'route-markers'; const mlid = 'route-marker-layer'
+  const tlid = 'route-marker-labels'
   try { if (map.getLayer(mlid)) map.removeLayer(mlid) } catch { /* */ }
+  try { if (map.getLayer(tlid)) map.removeLayer(tlid) } catch { /* */ }
   try { if (map.getSource(msid)) map.removeSource(msid) } catch { /* */ }
 
   map.addSource(msid, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [
-      { type: 'Feature', geometry: { type: 'Point', coordinates: [startLng, startLat] }, properties: { type: 'start' } },
-      { type: 'Feature', geometry: { type: 'Point', coordinates: endGcj }, properties: { type: 'end' } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [startLng, startLat] },
+        properties: { type: 'start', label: '起点' } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: endGcj },
+        properties: { type: 'end', label: '终点' } },
     ]},
   })
+  // Large markers
   map.addLayer({ id: mlid, type: 'circle', source: msid, paint: {
-    'circle-radius': 8,
+    'circle-radius': 12,
     'circle-color': ['case', ['==', ['get', 'type'], 'start'], '#67c23a', '#f56c6c'],
-    'circle-stroke-width': 2, 'circle-stroke-color': '#fff',
+    'circle-stroke-width': 3, 'circle-stroke-color': '#fff',
+  }})
+  // Text labels
+  map.addLayer({ id: tlid, type: 'symbol', source: msid, layout: {
+    'text-field': ['get', 'label'],
+    'text-size': 13,
+    'text-offset': [0, -1.8],
+    'text-anchor': 'top',
+  }, paint: {
+    'text-color': '#303133',
+    'text-halo-color': '#fff',
+    'text-halo-width': 2,
   }})
 }
 
@@ -464,11 +490,12 @@ function clearRoute() {
   const map = routeMapRef.value?.map
   try { if (map?.getLayer('route-line')) map.removeLayer('route-line') } catch { /* */ }
   try { if (map?.getLayer('route-marker-layer')) map.removeLayer('route-marker-layer') } catch { /* */ }
+  try { if (map?.getLayer('route-marker-labels')) map.removeLayer('route-marker-labels') } catch { /* */ }
   try { if (map?.getSource('route-path')) map.removeSource('route-path') } catch { /* */ }
   try { if (map?.getSource('route-markers')) map.removeSource('route-markers') } catch { /* */ }
 }
 
-// Setup map-click for pick mode
+// Setup map-click for pick mode with visual feedback
 watch(routeMapRef, (ref) => {
   const map = ref?.map
   if (!map) return
@@ -476,6 +503,12 @@ watch(routeMapRef, (ref) => {
     if (routeFrom.value !== 'pick') return
     pickLng.value = e.lngLat.lng
     pickLat.value = e.lngLat.lat
+    // Show a temporary marker at the pick point
+    const psid = 'pick-point'
+    try { if (map.getSource(psid)) map.removeSource(psid) } catch { /* */ }
+    try { if (map.getLayer(psid)) map.removeLayer(psid) } catch { /* */ }
+    map.addSource(psid, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Point', coordinates: [e.lngLat.lng, e.lngLat.lat] }, properties: {} } })
+    map.addLayer({ id: psid, type: 'circle', source: psid, paint: { 'circle-radius': 8, 'circle-color': '#67c23a', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
   })
 })
 
