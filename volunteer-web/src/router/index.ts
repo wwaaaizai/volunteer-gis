@@ -142,6 +142,11 @@ router.beforeEach(async (to, _from, next) => {
     return next('/')
   }
 
+  // 未登录用户访问非 guest 页面 → 重定向到登录页
+  if (!userStore.token && !to.meta.guest) {
+    return next('/login')
+  }
+
   next()
 })
 

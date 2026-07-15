@@ -4,10 +4,13 @@
       <h2>校园志愿活动服务系统</h2>
       <el-form :model="form" :rules="rules" ref="formRef">
         <el-form-item prop="studentId">
-          <el-input v-model="form.studentId" placeholder="学号" size="large" />
+          <el-input v-model="form.studentId" placeholder="学号" size="large" autocomplete="username" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" size="large" />
+          <el-input v-model="form.password" type="password" placeholder="密码" size="large" autocomplete="current-password" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="rememberMe">记住我</el-checkbox>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" size="large" style="width: 100%" @click="handleLogin" :loading="loading">
@@ -24,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
@@ -34,9 +37,19 @@ const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 
+const rememberMe = ref(false)
 const form = reactive({
   studentId: '',
   password: '',
+})
+
+// 自动填充记住的学号
+onMounted(() => {
+  const savedId = userStore.getRememberedStudentId()
+  if (savedId) {
+    form.studentId = savedId
+    rememberMe.value = true
+  }
 })
 
 const rules = {
@@ -49,7 +62,7 @@ async function handleLogin() {
   if (!valid) return
   loading.value = true
   try {
-    await userStore.login(form.studentId, form.password)
+    await userStore.login(form.studentId, form.password, rememberMe.value)
     ElMessage.success('登录成功')
     router.push('/')
   } catch {

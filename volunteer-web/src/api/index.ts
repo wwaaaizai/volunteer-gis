@@ -28,9 +28,12 @@ request.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      router.push('/login')
-      ElMessage.error('登录已过期，请重新登录')
+      // 动态导入避免循环依赖
+      import('@/stores/user').then(({ useUserStore }) => {
+        useUserStore().logout()
+        router.push('/login')
+        ElMessage.error('登录已过期，请重新登录')
+      })
     }
     return Promise.reject(error)
   }
