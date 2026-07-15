@@ -109,12 +109,62 @@
           </div>
         </el-card>
       </el-tab-pane>
+
+      <!-- ══════ 路径规划 ══════ -->
+      <el-tab-pane label="路径规划" name="route">
+        <p class="desc">从当前位置到活动地点的步行/骑行/驾车导航</p>
+        <el-form :inline="true" size="small">
+          <el-form-item label="起点">
+            <el-radio-group v-model="routeFrom" size="small">
+              <el-radio-button value="gps">我的位置 (GPS)</el-radio-button>
+              <el-radio-button value="pick">地图选点</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="目标活动">
+            <el-select v-model="routeActivityId" placeholder="选择目标活动" size="small">
+              <el-option v-for="a in activities" :key="a.id" :label="a.title" :value="a.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="出行方式">
+            <el-radio-group v-model="routeMode" size="small" @change="runRoute">
+              <el-radio-button value="foot">🚶 步行</el-radio-button>
+              <el-radio-button value="bike">🚲 骑行</el-radio-button>
+              <el-radio-button value="car">🚗 驾车</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="runRoute">规划路线</el-button>
+            <el-button @click="clearRoute">取消</el-button>
+          </el-form-item>
+        </el-form>
+        <div class="gps-hint" v-if="routeFrom === 'gps' && !userLng">
+          <el-button size="small" type="success" @click="getGpsLocation">📍 获取我的位置</el-button>
+        </div>
+        <BaseMap ref="routeMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
+        <el-card v-if="routeResult" style="margin-top: 12px">
+          <template #header>路径规划结果
+            <el-button size="small" text style="float:right" @click="clearRoute">清除</el-button>
+          </template>
+          <el-descriptions :column="3" size="small" border>
+            <el-descriptions-item label="出行方式">
+              {{ routeMode === 'foot' ? '步行' : routeMode === 'bike' ? '骑行' : '驾车' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="总距离">
+              {{ (routeResult.distance / 1000).toFixed(1) }} km
+            </el-descriptions-item>
+            <el-descriptions-item label="预计时间">
+              {{ Math.round(routeResult.duration / 60) }} 分钟
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import BaseMap from '@/components/map/BaseMap.vue'
 import { wgs84ToGcj02 } from '@/utils/coordConvert'
 import request from '@/api'
@@ -291,6 +341,143 @@ function clearMeeting() {
   try { if (map?.getLayer('meeting-circles')) map.removeLayer('meeting-circles') } catch { /* */ }
   try { if (map?.getSource('meeting-points')) map.removeSource('meeting-points') } catch { /* */ }
 }
+
+// ── Route ──
+const routeFrom = ref<'gps' | 'pick'>('gps')
+const routeMode = ref<'foot' | 'bike' | 'car'>('foot')
+const routeActivityId = ref<number | null>(null)
+const routeMapRef = ref<InstanceType<typeof BaseMap>>()
+const routeResult = ref<any>(null)
+const userLng = ref(0)
+const userLat = ref(0)
+const pickLng = ref(0)
+const pickLat = ref(0)
+
+function getGpsLocation() {
+  if (!navigator.geolocation) return
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLng.value = pos.coords.longitude
+      userLat.value = pos.coords.latitude
+    },
+    () => { ElMessage.warning('GPS定位失败，请使用地图选点') },
+    { enableHighAccuracy: true, timeout: 10000 },
+  )
+}
+
+async function runRoute() {
+  if (!routeActivityId.value) return
+  const act = activities.value.find(a => a.id === routeActivityId.value)
+  if (!act) return
+
+  // Determine start coordinates (WGS-84)
+  let startLng: number, startLat: number
+  if (routeFrom.value === 'gps') {
+    if (!userLng.value) { getGpsLocation(); return }
+    startLng = userLng.value; startLat = userLat.value
+  } else {
+    if (!pickLng.value) return
+    startLng = pickLng.value; startLat = pickLat.value
+  }
+
+  // Convert to GCJ-02 for OSRM (OSRM uses WGS-84 worldwide, GCJ offset in China is small enough for demo)
+  const endGcj = wgs84ToGcj02(act.longitude, act.latitude)
+
+  try {
+    const profile = routeMode.value === 'foot' ? 'foot' : routeMode.value === 'bike' ? 'bike' : 'car'
+    const url = `https://router.project-osrm.org/route/v1/${profile}/${startLng},${startLat};${act.longitude},${act.latitude}?geometries=geojson&overview=full`
+    const resp = await fetch(url)
+    const data = await resp.json()
+    if (data.code !== 'Ok' || !data.routes?.[0]) {
+      ElMessage.warning('路径规划失败，请检查网络或尝试其他出行方式')
+      return
+    }
+    routeResult.value = data.routes[0]
+    await nextTick()
+    drawRoute(data.routes[0].geometry, act, startLng, startLat, endGcj)
+  } catch {
+    // Fallback: draw straight line
+    drawStraightLine(act, startLng, startLat, endGcj)
+  }
+}
+
+function drawRoute(geometry: any, act: any, startLng: number, startLat: number, endGcj: [number, number]) {
+  const map = routeMapRef.value?.map; if (!map) return
+  const sid = 'route-path'; const lid = 'route-line'
+  try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
+  try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }
+
+  map.addSource(sid, { type: 'geojson', data: geometry })
+  map.addLayer({
+    id: lid, type: 'line', source: sid,
+    paint: { 'line-color': '#409eff', 'line-width': 4, 'line-opacity': 0.8 },
+  })
+
+  // Add start/end markers
+  addRouteMarkers(map, startLng, startLat, endGcj)
+}
+
+function drawStraightLine(act: any, startLng: number, startLat: number, endGcj: [number, number]) {
+  const map = routeMapRef.value?.map; if (!map) return
+  ElMessage.info('在线规划不可用，显示直线参考路径')
+  const sid = 'route-path'; const lid = 'route-line'
+  try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
+  try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }
+
+  const geojson = {
+    type: 'Feature', geometry: {
+      type: 'LineString', coordinates: [[startLng, startLat], [endGcj[0], endGcj[1]]],
+    }, properties: {},
+  }
+  map.addSource(sid, { type: 'geojson', data: geojson })
+  map.addLayer({
+    id: lid, type: 'line', source: sid,
+    paint: { 'line-color': '#ff6600', 'line-width': 3, 'line-dasharray': [6, 4] },
+  })
+  addRouteMarkers(map, startLng, startLat, endGcj)
+  // Estimate
+  const dist = Math.sqrt((endGcj[0]-startLng)**2 + (endGcj[1]-startLat)**2) * 111320
+  routeResult.value = { distance: dist, duration: dist / 1.4 }
+}
+
+function addRouteMarkers(map: any, startLng: number, startLat: number, endGcj: [number, number]) {
+  const msid = 'route-markers'; const mlid = 'route-marker-layer'
+  try { if (map.getLayer(mlid)) map.removeLayer(mlid) } catch { /* */ }
+  try { if (map.getSource(msid)) map.removeSource(msid) } catch { /* */ }
+
+  map.addSource(msid, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [startLng, startLat] }, properties: { type: 'start' } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: endGcj }, properties: { type: 'end' } },
+    ]},
+  })
+  map.addLayer({ id: mlid, type: 'circle', source: msid, paint: {
+    'circle-radius': 8,
+    'circle-color': ['case', ['==', ['get', 'type'], 'start'], '#67c23a', '#f56c6c'],
+    'circle-stroke-width': 2, 'circle-stroke-color': '#fff',
+  }})
+}
+
+function clearRoute() {
+  routeResult.value = null
+  const map = routeMapRef.value?.map
+  try { if (map?.getLayer('route-line')) map.removeLayer('route-line') } catch { /* */ }
+  try { if (map?.getLayer('route-marker-layer')) map.removeLayer('route-marker-layer') } catch { /* */ }
+  try { if (map?.getSource('route-path')) map.removeSource('route-path') } catch { /* */ }
+  try { if (map?.getSource('route-markers')) map.removeSource('route-markers') } catch { /* */ }
+}
+
+// Setup map-click for pick mode
+watch(routeMapRef, (ref) => {
+  const map = ref?.map
+  if (!map) return
+  map.on('click', (e: any) => {
+    if (routeFrom.value !== 'pick') return
+    pickLng.value = e.lngLat.lng
+    pickLat.value = e.lngLat.lat
+  })
+})
 
 onMounted(async () => {
   try { activities.value = await request.get('/activities') } catch { /* */ }
