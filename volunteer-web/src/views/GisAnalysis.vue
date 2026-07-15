@@ -389,45 +389,86 @@ async function runRoute() {
   const endGcj = wgs84ToGcj02(act.longitude, act.latitude)
 
   try {
-    const profile = routeMode.value === 'foot' ? 'foot' : routeMode.value === 'bike' ? 'bike' : 'car'
-    const url = `https://router.project-osrm.org/route/v1/${profile}/${startLng},${startLat};${act.longitude},${act.latitude}?geometries=geojson&overview=full`
+    const key = 'a67d378a0935e039990063e7dd30378f'
+    let url = ''
+    if (routeMode.value === 'foot') {
+      url = `https://restapi.amap.com/v3/direction/walking?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
+    } else if (routeMode.value === 'bike') {
+      url = `https://restapi.amap.com/v4/direction/bicycling?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
+    } else {
+      url = `https://restapi.amap.com/v3/direction/driving?key=${key}&origin=${startLng},${startLat}&destination=${act.longitude},${act.latitude}`
+    }
     const resp = await fetch(url)
     const data = await resp.json()
-    if (data.code !== 'Ok' || !data.routes?.[0]) {
-      ElMessage.warning('路径规划失败，请检查网络或尝试其他出行方式')
+    if (data.status !== '1' || !data.route?.paths?.[0]) {
+      ElMessage.warning('路径规划失败: ' + (data.info || '未知错误'))
+      drawStraightLine(act, startLng, startLat, endGcj)
       return
     }
-    routeResult.value = data.routes[0]
+    const path = data.route.paths[0]
+    routeResult.value = { distance: parseInt(path.distance), duration: parseInt(path.duration) }
+    const polyline = parseAmapPolyline(path)
     await nextTick()
-    drawRoute(data.routes[0].geometry, act, startLng, startLat, endGcj)
+    drawRoutePolyline(polyline, act, startLng, startLat, endGcj)
   } catch {
-    // Fallback: draw straight line
     drawStraightLine(act, startLng, startLat, endGcj)
   }
 }
 
-function drawRoute(geometry: any, act: any, startLng: number, startLat: number, endGcj: [number, number]) {
+/** 解析高德 polyline 编码为坐标数组（GCJ-02） */
+function parseAmapPolyline(path: any): [number, number][] {
+  const coords: [number, number][] = []
+  if (path.steps) {
+    for (const step of path.steps) {
+      if (step.polyline) {
+        const decoded = decodeAmapPolyline(step.polyline)
+        coords.push(...decoded)
+      }
+    }
+  }
+  return coords
+}
+
+/** 高德 polyline 编码解码（差分编码，与 Google polyline 类似但不同） */
+function decodeAmapPolyline(encoded: string): [number, number][] {
+  const result: [number, number][] = []
+  let i = 0, lng = 0, lat = 0
+  while (i < encoded.length) {
+    let b, shift = 0, val = 0
+    do { b = encoded.charCodeAt(i++) - 63; val |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    const dlng = (val & 1) ? ~(val >> 1) : (val >> 1)
+    lng += dlng
+    shift = 0; val = 0
+    do { b = encoded.charCodeAt(i++) - 63; val |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    const dlat = (val & 1) ? ~(val >> 1) : (val >> 1)
+    lat += dlat
+    result.push([lng / 1e6, lat / 1e6])
+  }
+  return result
+}
+
+function drawRoutePolyline(coords: [number, number][], act: any, startLng: number, startLat: number, endGcj: [number, number]) {
   const map = routeMapRef.value?.map; if (!map) return
   const sid = 'route-path'; const lid = 'route-line'
   try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
   try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }
 
-  map.addSource(sid, { type: 'geojson', data: geometry })
+  const geometry = { type: 'LineString', coordinates: coords }
+  map.addSource(sid, { type: 'geojson', data: { type: 'Feature', geometry, properties: {} } })
   map.addLayer({
     id: lid, type: 'line', source: sid,
     paint: { 'line-color': '#409eff', 'line-width': 5, 'line-opacity': 0.85 },
   })
 
-  // Add start/end markers + fit bounds
   addRouteMarkers(map, startLng, startLat, endGcj)
   const bounds = new (window as any).maplibregl.LngLatBounds()
-  geometry.coordinates.forEach((c: [number, number]) => bounds.extend(c as any))
+  coords.forEach(c => bounds.extend(c as any))
   map.fitBounds(bounds, { padding: 80, maxZoom: 17 })
 }
 
 function drawStraightLine(act: any, startLng: number, startLat: number, endGcj: [number, number]) {
   const map = routeMapRef.value?.map; if (!map) return
-  ElMessage.info('在线规划不可用，显示直线参考路径（OSRM 基于 Dijkstra 算法的路由引擎暂时无法连接）')
+  ElMessage.info('高德API规划失败，显示直线参考路径')
   const sid = 'route-path'; const lid = 'route-line'
   try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
   try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }
