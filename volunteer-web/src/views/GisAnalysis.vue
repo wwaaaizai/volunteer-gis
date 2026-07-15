@@ -18,11 +18,14 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="runBuffer">执行分析</el-button>
+            <el-button @click="clearBuffer">取消</el-button>
           </el-form-item>
         </el-form>
-        <BaseMap ref="bufferMapRef" style="height: 420px; border-radius: 6px; margin-top: 8px" />
+        <BaseMap ref="bufferMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <el-card v-if="bufferResult" style="margin-top: 12px">
-          <template #header>缓冲区分析结果</template>
+          <template #header>缓冲区分析结果
+            <el-button size="small" text style="float:right" @click="clearBuffer">清除</el-button>
+          </template>
           <el-tag type="success">覆盖 {{ bufferResult.coveredCount }} 个活动</el-tag>
           <el-tag type="warning" style="margin-left: 8px">总计 {{ bufferResult.totalSignups }} 人次报名</el-tag>
           <el-table :data="bufferResult.activities" size="small" style="margin-top:8px">
@@ -46,9 +49,10 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="runCoverage">执行分析</el-button>
+            <el-button @click="clearCoverage">取消</el-button>
           </el-form-item>
         </el-form>
-        <BaseMap ref="coverageMapRef" style="height: 420px; border-radius: 6px; margin-top: 8px" />
+        <BaseMap ref="coverageMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <div class="legend" style="margin-top:8px;display:flex;gap:12px;align-items:center">
           <span style="font-size:12px;color:#666">覆盖率:</span>
           <span class="leg" style="background:#f0f0f0">空白</span>
@@ -70,8 +74,11 @@
               <el-option label="2026-09" value="2026-09" />
             </el-select>
           </el-form-item>
+          <el-form-item>
+            <el-button @click="clearTimeline">取消</el-button>
+          </el-form-item>
         </el-form>
-        <BaseMap ref="timelineMapRef" style="height: 420px; border-radius: 6px; margin-top: 8px" />
+        <BaseMap ref="timelineMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
       </el-tab-pane>
 
       <!-- ══════ 集合点推荐 ══════ -->
@@ -88,9 +95,10 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="runMeeting">执行分析</el-button>
+            <el-button @click="clearMeeting">取消</el-button>
           </el-form-item>
         </el-form>
-        <BaseMap ref="meetingMapRef" style="height: 420px; border-radius: 6px; margin-top: 8px" />
+        <BaseMap ref="meetingMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <el-card v-if="meetingResult.length" style="margin-top: 12px">
           <template #header>推荐集合点</template>
           <div v-for="mp in meetingResult" :key="mp.index" class="meeting-item">
@@ -259,13 +267,38 @@ function showMeetingOnMap() {
   })
 }
 
+// ── Clear functions ──
+function clearBuffer() {
+  bufferResult.value = null
+  const map = bufferMapRef.value?.map
+  try { if (map?.getLayer('buffer-circle-layer')) map.removeLayer('buffer-circle-layer') } catch { /* */ }
+  try { if (map?.getLayer('buffer-circle-layer-line')) map.removeLayer('buffer-circle-layer-line') } catch { /* */ }
+  try { if (map?.getSource('buffer-circle')) map.removeSource('buffer-circle') } catch { /* */ }
+}
+function clearCoverage() {
+  const map = coverageMapRef.value?.map
+  try { if (map?.getLayer('coverage-fill')) map.removeLayer('coverage-fill') } catch { /* */ }
+  try { if (map?.getSource('coverage-grid')) map.removeSource('coverage-grid') } catch { /* */ }
+}
+function clearTimeline() {
+  const map = timelineMapRef.value?.map
+  try { if (map?.getLayer('timeline-circles')) map.removeLayer('timeline-circles') } catch { /* */ }
+  try { if (map?.getSource('timeline-points')) map.removeSource('timeline-points') } catch { /* */ }
+}
+function clearMeeting() {
+  meetingResult.value = []
+  const map = meetingMapRef.value?.map
+  try { if (map?.getLayer('meeting-circles')) map.removeLayer('meeting-circles') } catch { /* */ }
+  try { if (map?.getSource('meeting-points')) map.removeSource('meeting-points') } catch { /* */ }
+}
+
 onMounted(async () => {
   try { activities.value = await request.get('/activities') } catch { /* */ }
 })
 </script>
 
 <style scoped>
-.gis-analysis-page { max-width: 1000px; margin: 12px auto; padding: 0 16px; }
+.gis-analysis-page { max-width: 1200px; margin: 12px auto; padding: 0 16px; }
 .desc { color: #909399; font-size: 13px; margin-bottom: 12px; }
 .leg { padding: 2px 10px; border-radius: 4px; font-size: 11px; color: #333; border: 1px solid #ddd; }
 .meeting-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
