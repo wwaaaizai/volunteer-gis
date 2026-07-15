@@ -30,10 +30,16 @@
       </div>
     </div>
 
-    <!-- 热力图开关按钮 -->
-    <div class="heatmap-toggle" v-if="!heatmapVisible" @click="heatmapVisible = true; loadHeatmap()">
-      <span class="ht-icon">🔥</span>
-      <span>活动热力图</span>
+    <!-- 工具栏 -->
+    <div class="map-tools">
+      <div class="heatmap-toggle" v-if="!heatmapVisible" @click="heatmapVisible = true; loadHeatmap()">
+        <span class="ht-icon">🔥</span>
+        <span>热力图</span>
+      </div>
+      <div class="gis-tool-btn" @click="$router.push('/gis-analysis')">
+        <span class="ht-icon">📊</span>
+        <span>GIS分析</span>
+      </div>
     </div>
   </div>
 </template>
@@ -41,7 +47,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Map, GeoJSONSource } from 'maplibre-gl'
 import BaseMap from '@/components/map/BaseMap.vue'
 import ActivityLayer from '@/components/map/ActivityLayer.vue'
 import request from '@/api'
@@ -140,11 +145,17 @@ function handleFeatureClick(id: number) {
   height: calc(100vh - 60px);
 }
 
-.heatmap-toggle {
+.map-tools {
   position: absolute;
   bottom: 24px;
   right: 12px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.heatmap-toggle, .gis-tool-btn {
+  background: linear-gradient(135deg, #ff6b35, #f7c948);
   background: linear-gradient(135deg, #ff6b35, #f7c948);
   color: #fff;
   padding: 10px 18px;
@@ -166,6 +177,9 @@ function handleFeatureClick(id: number) {
   font-size: 18px;
 }
 
+.gis-tool-btn {
+  background: linear-gradient(135deg, #409eff, #66b1ff);
+}
 .heatmap-panel {
   position: absolute;
   bottom: 24px;
