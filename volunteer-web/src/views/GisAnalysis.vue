@@ -375,7 +375,7 @@ async function runRoute() {
   const act = activities.value.find(a => a.id === routeActivityId.value)
   if (!act) return
 
-  // 起点转GCJ-02（GPS/地图点击都是WGS-84）
+  // 起点：GPS(WGS-84)→GCJ-02 或 地图点击(已是GCJ-02)
   let startLng: number, startLat: number
   if (routeFrom.value === 'gps') {
     if (!userLng.value) { getGpsLocation(); return }
@@ -389,23 +389,22 @@ async function runRoute() {
   // 终点：数据库WGS-84→GCJ-02
   const endGcj = wgs84ToGcj02(act.longitude, act.latitude)
 
-  // 百度API（浏览器端调用，coord_type=gcj02无需转BD-09）
-  const BAIDU_KEY = '0UqXnGoiK6LFT8EjfRgbUUSzznnb5HWk'
-  const modeMap: Record<string, string> = { foot: 'walking', bike: 'riding', car: 'driving' }
-  const url = `https://api.map.baidu.com/directionlite/v2/${modeMap[routeMode.value]}?` +
-    `origin=${startLat},${startLng}&destination=${endGcj[1]},${endGcj[0]}&ak=${BAIDU_KEY}&coord_type=gcj02`
-
   try {
-    const resp = await fetch(url)
-    const data = await resp.json()
-    if (data.status !== 0 || !data.result?.routes?.[0]) {
-      ElMessage.warning('路径规划失败: ' + (data.message || '无可用路线'))
+    // 通过后端代理调用高德API → 后端用HttpURLConnection调用→返回原始JSON
+    const resp = await request.get('/map/route', {
+      params: { mode: routeMode.value, originLng: startLng, originLat: startLat,
+                destLng: act.longitude, destLat: act.latitude }
+    }) as any
+    if (!resp?.raw) throw new Error('no data')
+    const data = JSON.parse(resp.raw)
+    if (data.status !== '1' || !data.route?.paths?.[0]) {
+      ElMessage.warning('路径规划失败: ' + (data.info || '无可用路线'))
       drawStraightLine(act, startLng, startLat, endGcj)
       return
     }
-    const route = data.result.routes[0]
-    routeResult.value = { distance: route.distance, duration: route.duration }
-    const polyline = parseBaiduPolyline(route)
+    const path = data.route.paths[0]
+    routeResult.value = { distance: parseInt(path.distance), duration: parseInt(path.duration) }
+    const polyline = parseAmapPolyline(path)
     await nextTick()
     drawRoutePolyline(polyline, act, startLng, startLat, endGcj)
   } catch {
@@ -413,22 +412,34 @@ async function runRoute() {
   }
 }
 
-/** 解析百度路线 polyline 为坐标数组（GCJ-02） */
-function parseBaiduPolyline(route: any): [number, number][] {
+/** 解析高德路线polyline为坐标数组 */
+function parseAmapPolyline(path: any): [number, number][] {
   const coords: [number, number][] = []
-  if (route.steps) {
-    for (const step of route.steps) {
-      if (step.path) {
-        // 百度 path 格式: "lng1,lat1;lng2,lat2;..."
-        const points = step.path.split(';')
-        for (const p of points) {
-          const [lng, lat] = p.split(',').map(Number)
-          if (!isNaN(lng)) coords.push([lng, lat])
-        }
+  if (path.steps) {
+    for (const step of path.steps) {
+      if (step.polyline) {
+        const decoded = decodeAmapPolyline(step.polyline)
+        coords.push(...decoded)
       }
     }
   }
   return coords
+}
+
+/** 高德polyline差分编码解码 */
+function decodeAmapPolyline(encoded: string): [number, number][] {
+  const result: [number, number][] = []
+  let i = 0, lng = 0, lat = 0
+  while (i < encoded.length) {
+    let b, shift = 0, val = 0
+    do { b = encoded.charCodeAt(i++) - 63; val |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    const dlng = (val & 1) ? ~(val >> 1) : (val >> 1); lng += dlng
+    shift = 0; val = 0
+    do { b = encoded.charCodeAt(i++) - 63; val |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    const dlat = (val & 1) ? ~(val >> 1) : (val >> 1); lat += dlat
+    result.push([lng / 1e6, lat / 1e6])
+  }
+  return result
 }
 
 function drawRoutePolyline(coords: [number, number][], act: any, startLng: number, startLat: number, endGcj: [number, number]) {
