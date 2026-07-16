@@ -12,6 +12,17 @@
         <el-form-item prop="phone">
           <el-input v-model="form.phone" placeholder="手机号" size="large" />
         </el-form-item>
+        <el-form-item prop="grade">
+          <el-select v-model="form.grade" placeholder="年级（选填）" size="large" style="width:100%">
+            <el-option label="2023级" value="2023" />
+            <el-option label="2024级" value="2024" />
+            <el-option label="2025级" value="2025" />
+            <el-option label="2026级" value="2026" />
+          </el-select>
+        </el-form-item>
+        <el-form-item prop="college">
+          <el-input v-model="form.college" placeholder="院系（选填，如：计算机科学与技术学院）" size="large" />
+        </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码（至少6位）" size="large" />
         </el-form-item>
@@ -60,6 +71,8 @@ const form = reactive({
   studentId: '',
   name: '',
   phone: '',
+  grade: '',
+  college: '',
   password: '',
   applyOrganizer: false,
   organization: '',

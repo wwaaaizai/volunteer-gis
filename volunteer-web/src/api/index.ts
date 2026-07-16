@@ -28,9 +28,16 @@ request.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      router.push('/login')
-      ElMessage.error('登录已过期，请重新登录')
+      // 动态导入避免循环依赖
+      import('@/stores/user').then(({ useUserStore }) => {
+        useUserStore().logout()
+        router.push('/login')
+        ElMessage.error('登录已过期，请重新登录')
+      })
+    } else if (error.response?.status === 403) {
+      ElMessage.error('无权限执行此操作，请确认当前账号拥有管理员权限')
+    } else if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
     }
     return Promise.reject(error)
   }

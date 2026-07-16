@@ -15,20 +15,29 @@ function normalizeActivity(a: any) {
     organizerId: a.organizerId ?? a.creatorId ?? 1,
     category: a.category || '',
     tags: a.tags || '',
+    volunteerHours: a.volunteerHours ?? null,
+    targetGrade: a.targetGrade || '',
+    targetCollege: a.targetCollege || '',
+    organizationName: a.organizationName || '',
+    proposal: a.proposal || null,
   }
 }
 
 export const activityHandlers = [
   // ── 精确路径 / 更具体的路径放前面 ──
 
-  /** GET /api/activities — 活动列表（学生视角，仅已发布） */
-  http.get('/api/activities', () => {
+  /** GET /api/activities — 活动列表（学生视角仅已发布；管理员传 showAll=true 查看全部） */
+  http.get('/api/activities', ({ request }) => {
+    const url = new URL(request.url)
+    const showAll = url.searchParams.get('showAll') === 'true'
     const db = getDB()
-    const list = db.activities
-      .filter(a => a.deleted === 0 && a.status === 'published')
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map(normalizeActivity)
-    return HttpResponse.json({ code: 200, message: 'success', data: list })
+    let list = db.activities
+      .filter(a => a.deleted === 0)
+    if (!showAll) {
+      list = list.filter(a => a.status === 'published')
+    }
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return HttpResponse.json({ code: 200, message: 'success', data: list.map(normalizeActivity) })
   }),
 
   /** GET /api/activities/my — 我的活动列表（组织者视角，按状态筛选） */
@@ -81,6 +90,11 @@ export const activityHandlers = [
       signupEnd: (body.signupEnd as string) || null,
       maxParticipants: Number(body.maxParticipants) || 50,
       signedCount: 0,
+      volunteerHours: body.volunteerHours != null ? Number(body.volunteerHours) : null,
+      targetGrade: (body.targetGrade as string) || '',
+      targetCollege: (body.targetCollege as string) || '',
+      organizationName: (body.organizationName as string) || (user.organization || ''),
+      proposal: (body.proposal as string) || null,
       coverImage: (body.coverImage as string) || null,
       status: 'draft' as const,
       creatorId: user.id,
@@ -123,6 +137,11 @@ export const activityHandlers = [
         coverImage: body.coverImage !== undefined ? body.coverImage : activity.coverImage,
         category: body.category !== undefined ? body.category : activity.category,
         tags: body.tags !== undefined ? body.tags : activity.tags,
+        volunteerHours: body.volunteerHours !== undefined ? (body.volunteerHours != null ? Number(body.volunteerHours) : null) : activity.volunteerHours,
+        targetGrade: body.targetGrade !== undefined ? body.targetGrade : activity.targetGrade,
+        targetCollege: body.targetCollege !== undefined ? body.targetCollege : activity.targetCollege,
+        organizationName: body.organizationName !== undefined ? body.organizationName : activity.organizationName,
+        proposal: body.proposal !== undefined ? body.proposal : activity.proposal,
         updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
       })
     } else if (activity.status === 'published' || activity.status === 'ongoing') {
@@ -152,6 +171,23 @@ export const activityHandlers = [
     activity.updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
     saveDB()
     return HttpResponse.json({ code: 200, message: '发布成功', data: null })
+  }),
+
+  /** DELETE /api/activities/:id — 删除活动（仅管理员，逻辑删除） */
+  http.delete('/api/activities/:id', ({ params, request }) => {
+    const user = parseMockUser(request.headers.get('Authorization'))
+    if (!user || user.role !== 'admin') {
+      return HttpResponse.json({ code: 403, message: '仅管理员可删除活动', data: null }, { status: 403 })
+    }
+    const db = getDB()
+    const activity = db.activities.find(a => a.id === Number(params.id) && a.deleted === 0)
+    if (!activity) {
+      return HttpResponse.json({ code: 500, message: '活动不存在', data: null })
+    }
+    activity.deleted = 1
+    activity.updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
+    saveDB()
+    return HttpResponse.json({ code: 200, message: '删除成功', data: null })
   }),
 
   /** GET /api/activities/search?keyword=xxx — 搜索 */

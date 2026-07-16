@@ -54,51 +54,67 @@
           <el-table :data="signups" v-loading="loadingSignups" empty-text="暂无报名">
             <el-table-column label="序号" width="60" type="index" />
             <el-table-column prop="userId" label="用户ID" width="80" />
-            <el-table-column label="签到状态" width="100">
+            <el-table-column label="审核状态" width="110">
               <template #default="{ row }">
                 <el-tag :type="signupStatusType(row.status)" size="small">
                   {{ signupStatusLabel(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="签到时间" width="180">
-              <template #default="{ row }">
-                {{ row.signInTime || '—' }}
-              </template>
+            <el-table-column label="签到时间" width="170">
+              <template #default="{ row }">{{ row.signInTime || '—' }}</template>
             </el-table-column>
-            <el-table-column label="签退时间" width="180">
-              <template #default="{ row }">
-                {{ row.signOutTime || '—' }}
-              </template>
+            <el-table-column label="签退时间" width="170">
+              <template #default="{ row }">{{ row.signOutTime || '—' }}</template>
             </el-table-column>
-            <el-table-column prop="volunteerHours" label="时长(h)" width="80">
+            <el-table-column prop="volunteerHours" label="时长(h)" width="75" />
+            <el-table-column label="操作" min-width="180">
               <template #default="{ row }">
-                {{ row.volunteerHours ?? '—' }}
+                <template v-if="row.status === 'signed'">
+                  <el-button size="small" type="success" @click="reviewSignup(row.id, 'approve')">
+                    ✓ 通过
+                  </el-button>
+                  <el-button size="small" type="danger" @click="rejectSignup(row.id)">
+                    ✗ 拒绝
+                  </el-button>
+                </template>
+                <template v-else-if="row.status === 'rejected'">
+                  <el-tooltip :content="row.reviewReason || '无理由'" placement="top">
+                    <el-tag type="danger" size="small">已拒绝</el-tag>
+                  </el-tooltip>
+                </template>
+                <template v-else>
+                  <span style="color:#909399">—</span>
+                </template>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
 
-        <!-- Tab2: 签到统计 -->
-        <el-tab-pane label="签到统计" name="stats">
+        <!-- Tab2: 报名统计 -->
+        <el-tab-pane label="报名统计" name="stats">
           <el-row :gutter="16">
-            <el-col :span="6">
-              <el-statistic title="已报名" :value="signupStats.total" />
+            <el-col :span="4">
+              <el-statistic title="总计" :value="signupStats.total" />
             </el-col>
-            <el-col :span="6">
-              <el-statistic title="已签到" :value="signupStats.signedIn">
+            <el-col :span="4">
+              <el-statistic title="待审核" :value="signupStats.toReview">
                 <template #suffix>
-                  <span style="font-size: 14px; color: #67c23a">
-                    {{ signupStats.total ? Math.round(signupStats.signedIn / signupStats.total * 100) : 0 }}%
-                  </span>
+                  <span v-if="signupStats.toReview > 0" style="font-size:13px;color:#E6A23C">⚠</span>
                 </template>
               </el-statistic>
             </el-col>
-            <el-col :span="6">
-              <el-statistic title="已签退" :value="signupStats.signedOut" />
+            <el-col :span="4">
+              <el-statistic title="已通过" :value="signupStats.approved" />
             </el-col>
-            <el-col :span="6">
-              <el-statistic title="未签到" :value="signupStats.pending" />
+            <el-col :span="4">
+              <el-statistic title="已拒绝" :value="signupStats.rejected" />
+            </el-col>
+            <el-col :span="4">
+              <el-statistic title="已签到" :value="signupStats.signedIn" />
+            </el-col>
+            <el-col :span="4">
+              <el-statistic title="已签退" :value="signupStats.signedOut" />
             </el-col>
           </el-row>
         </el-tab-pane>
@@ -110,6 +126,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
 
 const route = useRoute()
@@ -151,31 +168,66 @@ const statusLabel = computed(() => {
 /** 签到状态 */
 function signupStatusType(s: string) {
   const map: Record<string, string> = {
-    signed: 'info', signed_in: 'warning', signed_out: 'success', cancelled: 'danger',
+    signed: '', signed_in: 'warning', signed_out: 'success', cancelled: 'danger',
+    approved: 'success', rejected: 'danger',
   }
   return map[s] || 'info'
 }
 function signupStatusLabel(s: string) {
   const map: Record<string, string> = {
-    signed: '已报名', signed_in: '已签到', signed_out: '已签退', cancelled: '已取消',
+    signed: '待审核', signed_in: '已签到', signed_out: '已签退', cancelled: '已取消',
+    approved: '已通过', rejected: '已拒绝',
   }
   return map[s] || s
 }
 
+/** 审核报名 — 通过 */
+async function reviewSignup(id: number, action: string) {
+  try {
+    await request.put(`/signups/${id}/review`, { action })
+    ElMessage.success(action === 'approve' ? '已通过' : '已拒绝')
+    loadSignups()
+  } catch {
+    /* error handled by interceptor */
+  }
+}
+
+/** 审核报名 — 拒绝（弹出理由输入框） */
+async function rejectSignup(id: number) {
+  try {
+    const { value: reason } = await ElMessageBox.prompt('请输入拒绝理由', '拒绝报名', {
+      confirmButtonText: '确认拒绝',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '选填：拒绝理由...',
+    })
+    await request.put(`/signups/${id}/review`, { action: 'reject', reason: reason || '' })
+    ElMessage.success('已拒绝')
+    loadSignups()
+  } catch {
+    /* user cancelled or error */
+    if (typeof arguments[0] === 'string') { /* ignore cancel */ }
+  }
+}
+
 /** 签到统计 */
 const signupStats = computed(() => {
-  let total = signups.value.length
-  let signedIn = 0
-  let signedOut = 0
+  const total = signups.value.length
+  let signed = 0, approved = 0, rejected = 0, signedIn = 0, signedOut = 0
   signups.value.forEach((s: any) => {
+    if (s.status === 'signed') signed++
+    if (s.status === 'approved') approved++
+    if (s.status === 'rejected') rejected++
     if (s.status === 'signed_in') signedIn++
     if (s.status === 'signed_out') signedOut++
   })
   return {
     total,
+    toReview: signed,
+    approved,
+    rejected,
     signedIn,
     signedOut,
-    pending: total - signedIn - signedOut,
   }
 })
 

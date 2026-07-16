@@ -17,7 +17,7 @@ export const mapHandlers = [
   http.get('/api/map/activities', () => {
     const db = getDB()
     const published = db.activities.filter(
-      a => a.deleted === 0 && a.status === 'published'
+      a => a.deleted === 0 && (a.status === 'published' || a.status === 'ongoing')
     )
 
     const features: ActivityFeature[] = published.map(a => {

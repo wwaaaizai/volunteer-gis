@@ -57,6 +57,27 @@ public class SignupController {
     }
 
     /**
+     * 审核报名（通过/拒绝）
+     * 请求体：{ "action": "approve" | "reject", "reason": "..." }
+     */
+    @PutMapping("/{id}/review")
+    @PreAuthorize("hasAnyRole('admin','organizer')")
+    public Result<?> reviewSignup(@PathVariable Long id,
+                               @RequestBody Map<String, String> body) {
+        String action = body.get("action");
+        String reason = body.getOrDefault("reason", "");
+        if (action == null || action.isEmpty()) {
+            return Result.error(400, "审核操作不能为空");
+        }
+        try {
+            signupService.reviewSignup(id, action, reason);
+            return Result.ok("审核完成");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
      * 志愿足迹：返回当前用户的所有签到记录（含坐标，用于地图展示）
      */
     @GetMapping("/my-footprint")

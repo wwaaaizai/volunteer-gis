@@ -12,6 +12,7 @@ public interface UserService extends IService<User> {
      * 注册
      */
     void register(String studentId, String password, String name, String phone,
+                  String grade, String college,
                   boolean applyOrganizer, String organization, String employeeId);
 
     /**
@@ -38,4 +39,30 @@ public interface UserService extends IService<User> {
      * 更新用户个人信息
      */
     void updateProfile(Long userId, String name, String phone, String organization);
+
+    /**
+     * 列出所有用户（管理员功能）
+     */
+    List<User> listAllUsers();
+
+    /**
+     * 管理员创建用户
+     */
+    User createUser(String studentId, String password, String name, String phone,
+                    String role, String organization);
+
+    /**
+     * 管理员更新用户信息
+     */
+    void updateUser(Long userId, String name, String phone, String role, String organization);
+
+    /**
+     * 管理员删除用户（逻辑删除）
+     */
+    void deleteUser(Long userId);
+
+    /**
+     * 管理员重置用户密码
+     */
+    void resetPassword(Long userId, String newPassword);
 }

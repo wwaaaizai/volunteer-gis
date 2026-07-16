@@ -30,7 +30,6 @@ public interface ActivityService extends IService<Activity> {
      * 编辑活动（草稿可全编，已发布仅限描述和封面）
      */
     void updateActivity(Long activityId, Activity update);
-
     /**
      * 保存签到地理围栏（GeoJSON Polygon）
      */
@@ -40,4 +39,14 @@ public interface ActivityService extends IService<Activity> {
      * 附近活动推荐：按距离排序已发布活动
      */
     List<Activity> listNearby(double lng, double lat);
+
+    /**
+     * 删除活动（逻辑删除，仅管理员可操作）
+     */
+    void deleteActivity(Long activityId);
+
+    /**
+     * 查询所有活动（管理员视角，不做状态过滤）
+     */
+    List<Activity> listAll();
 }

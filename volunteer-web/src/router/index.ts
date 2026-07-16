@@ -25,6 +25,12 @@ const routes = [
         meta: { title: '活动地图' },
       },
       {
+        path: 'my',
+        name: 'My',
+        component: () => import('@/views/My.vue'),
+        meta: { title: '我的' },
+      },
+      {
         path: 'activity/:id',
         name: 'ActivityDetail',
         component: () => import('@/views/ActivityDetail.vue'),
@@ -102,6 +108,18 @@ const routes = [
         component: () => import('@/views/OrganizerProfile.vue'),
         meta: { title: '个人信息', roles: ['organizer', 'admin'] },
       },
+      {
+        path: 'scan',
+        name: 'Scan',
+        component: () => import('@/views/Scan.vue'),
+        meta: { title: '扫一扫' },
+      },
+      {
+        path: 'course-schedule',
+        name: 'CourseSchedule',
+        component: () => import('@/views/CourseSchedule.vue'),
+        meta: { title: '课程表' },
+      },
     ],
   },
 ]
@@ -120,7 +138,7 @@ router.beforeEach(async (to, _from, next) => {
     await userStore.fetchUser()
   }
 
-  // P2-UPM-05：统一使用 meta.roles 数组校验角色权限
+  // P2-UPM-05：支持 meta.roles 数组校验角色权限
   const requiredRoles = to.meta.roles as string[] | undefined
   if (requiredRoles && requiredRoles.length > 0) {
     const userRole = userStore.user?.role || ''
@@ -129,9 +147,28 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
+  // 兼容旧的 meta.role 单值写法
+  if (to.meta.role === 'admin') {
+    if (!userStore.user || userStore.user.role !== 'admin') {
+      return next('/')
+    }
+  }
+
+  // 需要组织者权限
+  if (to.meta.role === 'organizer') {
+    if (!userStore.user || (userStore.user.role !== 'organizer' && userStore.user.role !== 'admin')) {
+      return next('/')
+    }
+  }
+
   // 已登录用户访问登录/注册页 → 重定向到首页
   if (to.meta.guest && userStore.user) {
     return next('/')
+  }
+
+  // 未登录用户访问非 guest 页面 → 重定向到登录页
+  if (!userStore.token && !to.meta.guest) {
+    return next('/login')
   }
 
   next()
