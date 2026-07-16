@@ -12,7 +12,11 @@ export interface MockUser {
   password: string
   name: string
   phone: string
+  grade?: string
+  college?: string
   role: 'student' | 'admin' | 'organizer'
+  organization?: string
+  employeeId?: string
   totalHours: number
   deleted: number
   createdAt: string
@@ -31,6 +35,11 @@ export interface MockActivity {
   signupStart: string | null
   signupEnd: string | null
   maxParticipants: number
+  volunteerHours?: number | null
+  targetGrade?: string
+  targetCollege?: string
+  organizationName?: string
+  proposal?: string
   signedCount: number
   coverImage: string | null
   status: 'draft' | 'published' | 'ongoing' | 'ended' | 'cancelled'
@@ -84,7 +93,7 @@ export interface MockDB {
 
 const STORAGE_KEY = 'volunteer-mock-db'
 /** 种子数据版本号，升级种子数据时递增，旧版本自动清除 */
-const SEED_VERSION = 5
+const SEED_VERSION = 7
 
 let db: MockDB | null = null
 

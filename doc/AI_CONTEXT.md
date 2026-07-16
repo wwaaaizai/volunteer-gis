@@ -82,8 +82,8 @@
 
 | 表名 | 核心字段 | 关键索引 |
 |------|---------|---------|
-| `user` | id, student_id(UNIQUE), password(bcrypt), name, phone, role(student/organizer/admin), organization, employee_id, total_hours | idx_role |
-| `activity` | id, title, location_name, longitude/latitude(经纬度), start_time/end_time, signup_start/signup_end, signed_count, max_participants, cover_image, status(draft/published/ongoing/ended/cancelled), creator_id, organizer_id, category, tags, checkin_region(GeoJSON) | idx_status, idx_status_time, idx_creator |
+| `user` | id, student_id(UNIQUE), password(bcrypt), name, phone, grade, college, role(student/organizer/admin), organization, employee_id, total_hours | idx_role |
+| `activity` | id, title, location_name, longitude/latitude(经纬度), start_time/end_time, signup_start/signup_end, max_participants, volunteer_hours, target_grade, target_college, organization_name, proposal(JSON), signed_count, cover_image, status(draft/published/ongoing/ended/cancelled), creator_id, organizer_id, category, tags, checkin_region(GeoJSON) | idx_status, idx_status_time, idx_creator |
 | `signup` | id, activity_id, user_id, status(signed/approved/rejected/signed_in/signed_out/cancelled), sign_in_time/lng/lat, sign_out_time/lng/lat, volunteer_hours, hour_verified, review_reason | idx_activity, idx_user, idx_user_activity |
 | `message` | id, user_id, title, content, type, is_read | idx_user_read |
 | `organizer_apply` | id, user_id, organization, reason, status(pending/approved/rejected), reviewed_by | idx_user, idx_status |

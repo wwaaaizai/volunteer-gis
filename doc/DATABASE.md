@@ -24,6 +24,8 @@ user (1) ──────< signup >────── (1) activity
 | password | VARCHAR(255) | NN | bcrypt($2a$10$...) |
 | name | VARCHAR(64) | NN | 姓名 |
 | phone | VARCHAR(16) | | 手机号 |
+| grade | VARCHAR(16) | | 年级（如"2023"） |
+| college | VARCHAR(64) | | 院系（如"计算机科学与技术学院"） |
 | role | VARCHAR(16) | NN, DEFAULT 'student' | student / organizer / admin |
 | organization | VARCHAR(64) | | 所属机构（组织者填写） |
 | employee_id | VARCHAR(32) | | 工号（组织者填写） |
@@ -51,6 +53,11 @@ user (1) ──────< signup >────── (1) activity
 | signup_start | DATETIME | | 报名开始时间 |
 | signup_end | DATETIME | | 报名截止时间 |
 | max_participants | INT | NN, DEFAULT 50 | 人数上限 |
+| volunteer_hours | DECIMAL(5,1) | | 预设志愿时长（小时） |
+| target_grade | VARCHAR(128) | | 面向年级，逗号分隔（"ALL"=不限） |
+| target_college | VARCHAR(255) | | 面向院系，逗号分隔（"ALL"=不限） |
+| organization_name | VARCHAR(128) | | 归属组织名称（冗余存储） |
+| proposal | JSON | | 策划案（15章节结构化JSON） |
 | signed_count | INT | NN, DEFAULT 0 | 当前报名人数 |
 | cover_image | VARCHAR(255) | | 封面图片路径 |
 | status | VARCHAR(16) | NN, DEFAULT 'draft' | 见状态枚举 |
@@ -175,7 +182,7 @@ signin  → 签到相关
 
 ---
 
-## 7. 初始化
+## 9. 初始化
 
 执行顺序：
 ```bash

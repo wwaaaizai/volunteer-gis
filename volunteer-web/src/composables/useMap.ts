@@ -18,6 +18,8 @@ export interface UseMapOptions {
   center?: [number, number]
   /** 缩放级别 */
   zoom?: number
+  /** 移动端模式：不添加内置缩放/指南针/定位控件，由外部自定义按钮控制 */
+  mobile?: boolean
 }
 
 /**
@@ -50,13 +52,14 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
         minZoom: MIN_ZOOM,
         maxZoom: MAX_ZOOM,
       })
-      // 添加缩放控件和定位按钮
-      instance.addControl(new maplibregl.NavigationControl(), 'top-right')
-      instance.addControl(new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-        showUserHeading: true,
-      }), 'top-right')
+      // 桌面端：添加缩放控件和定位按钮；移动端由外部自定义按钮控制
+      if (!options.mobile) {
+        instance.addControl(new maplibregl.NavigationControl(), 'top-right')
+        instance.addControl(new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+        }), 'top-right')
+      }
       instance.on('load', () => {
         mapReady.value = true
         // 加载完成后飞向矿大南湖校区
@@ -78,6 +81,29 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
   }
 
   const currentBaseMap = ref<BaseMapMode>('standard')
+
+  /** 移动端手动定位：调用浏览器 Geolocation API，飞至当前位置 */
+  function locate() {
+    if (!navigator.geolocation) {
+      console.warn('浏览器不支持定位')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const m = map.value
+        if (!m) return
+        m.flyTo({
+          center: [pos.coords.longitude, pos.coords.latitude],
+          zoom: 16,
+          duration: 800,
+        })
+      },
+      (err) => {
+        console.warn('定位失败:', err.message)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    )
+  }
 
   /** 底图标准/卫星切换（不销毁矢量图层） */
   function switchBaseMap(mode: BaseMapMode) {
@@ -129,5 +155,5 @@ export function useMap(container: Ref<HTMLElement | undefined>, options: UseMapO
 
   onUnmounted(destroy)
 
-  return { map, mapReady, currentBaseMap, init, destroy, switchBaseMap }
+  return { map, mapReady, currentBaseMap, init, destroy, switchBaseMap, locate }
 }

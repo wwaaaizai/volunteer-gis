@@ -140,6 +140,31 @@ ALTER TABLE activity ADD COLUMN checkin_region TEXT COMMENT '签到围栏 GeoJSO
 
 ---
 
+### Phase 5 — 活动属性规范化 + 用户年级/院系
+
+**关联提交**: 当前工作区（活动属性规范化）
+
+**变更**：`activity` 表新增 5 列，`user` 表新增 2 列。
+
+```sql
+USE volunteer_db;
+
+-- activity 表：预设志愿时长、面向对象、归属组织、策划案
+ALTER TABLE activity ADD COLUMN volunteer_hours DECIMAL(5,1) COMMENT '预设志愿时长（小时）' AFTER max_participants;
+ALTER TABLE activity ADD COLUMN target_grade VARCHAR(128) COMMENT '面向年级，逗号分隔，ALL=不限' AFTER volunteer_hours;
+ALTER TABLE activity ADD COLUMN target_college VARCHAR(255) COMMENT '面向院系，逗号分隔，ALL=不限' AFTER target_grade;
+ALTER TABLE activity ADD COLUMN organization_name VARCHAR(128) COMMENT '归属组织名称（冗余存储）' AFTER target_college;
+ALTER TABLE activity ADD COLUMN proposal JSON COMMENT '策划案（15章节结构化JSON）' AFTER organization_name;
+
+-- user 表：年级、院系
+ALTER TABLE `user` ADD COLUMN grade VARCHAR(16) COMMENT '年级（如2023）' AFTER phone;
+ALTER TABLE `user` ADD COLUMN college VARCHAR(64) COMMENT '院系' AFTER grade;
+```
+
+> **注意**：init.sql 中的 Phase 5 迁移块使用 `INFORMATION_SCHEMA` 动态检测列是否存在，可安全重复执行。
+
+---
+
 ## 验证
 
 执行完毕后，确认表与列完整：
@@ -150,9 +175,9 @@ USE volunteer_db;
 -- 应有 6 张表：user, activity, signup, message, organizer_apply, operation_log
 SHOW TABLES;
 
--- 确认 activity 表包含 checkin_region 列
+-- 确认 activity 表包含 volunteer_hours, target_grade, target_college, organization_name, proposal 列
 DESC activity;
 
--- 确认 signup 表包含 review_reason 列
-DESC signup;
+-- 确认 user 表包含 grade, college 列
+DESC `user`;
 ```

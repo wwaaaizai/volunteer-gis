@@ -3,7 +3,14 @@
 > **基础代码状态**：Phase 1 MVP 已完成（用户注册/登录、活动 CRUD、地图浏览、报名、签到签退、时长统计）
 > **本文档目标**：(1) 规范化任务规划体系 (2) 细化当前 4 项需求 (3) 提出可扩展的 GIS 功能模块方案
 >
-> 2026年6月
+> **Phase 2 进度更新**（2026-07-13）：
+> - **需求 ①② 全部完成**：组织者角色全链路(UPM)、活动创建子系统(ACA)
+> - **需求 ③ GeoServer 集成未开始**：P2-AM-01~05/07~08 待推进
+> - **需求 ④ 地图边界限制全部完成**：P2-AM-11~16
+> - **额外完成超出计划**：围栏编辑(E)、热力图(B)、足迹(G)、附近推荐、报名审核、AI 辅助
+> - 详细完成状态见各任务清单中的 ✅/⬜ 标记
+>
+> 2026年6月（初稿），2026年7月（进度更新）
 
 ---
 
@@ -69,15 +76,15 @@
 
 ### 任务清单
 
-| 编号 | 层级 | 任务 | 涉及文件 | 预计工时 |
-|------|------|------|---------|----------|
-| P2-UPM-01 | L0 | 扩展 `user.role` 枚举为 `student / organizer / admin` | entity/User.java, db/init.sql | 0.5d |
-| P2-UPM-02 | L0 | 添加组织者初始权限配置（Security 角色映射） | config/SecurityConfig.java | 0.5d |
-| P2-UPM-03 | L1 | 注册页面增加"组织者申请"选项，提交时回填机构/工号 | views/Login.vue, AuthController | 1d |
-| P2-UPM-04 | L1 | 管理员后台增加"组织者审批"Tab，审核通过才能获得 organizer 角色 | Admin.vue, UserService | 1d |
-| P2-UPM-05 | L1 | 前端路由守卫支持 `meta.role = ['admin', 'organizer']` | router/index.ts | 0.5d |
-| P2-UPM-06 | L2 | 组织者个人信息管理页（修改联系方式、所属机构） | 新页面 OrganizerProfile.vue | 1d |
-| P2-UPM-07 | L3 | 组织者操作日志（创建活动、编辑活动记录） | entity/OperationLog, 新表 | 1d |
+| 编号 | 层级 | 状态 | 任务 | 涉及文件 | 预计工时 |
+|------|------|------|------|---------|----------|
+| P2-UPM-01 | L0 | ✅ | 扩展 `user.role` 枚举为 `student / organizer / admin` | entity/User.java, db/init.sql | 0.5d |
+| P2-UPM-02 | L0 | ✅ | 添加组织者初始权限配置（Security 角色映射） | config/SecurityConfig.java | 0.5d |
+| P2-UPM-03 | L1 | ✅ | 注册页面增加"组织者申请"选项，提交时回填机构/工号 | views/Login.vue, AuthController | 1d |
+| P2-UPM-04 | L1 | ✅ | 管理员后台增加"组织者审批"Tab，审核通过才能获得 organizer 角色 | Admin.vue, UserService | 1d |
+| P2-UPM-05 | L1 | ✅ | 前端路由守卫支持 `meta.roles = ['admin', 'organizer']` | router/index.ts | 0.5d |
+| P2-UPM-06 | L2 | ✅ | 组织者个人信息管理页（修改联系方式、所属机构） | 新页面 OrganizerProfile.vue | 1d |
+| P2-UPM-07 | L3 | ✅ | 组织者操作日志（创建活动、编辑活动记录） | entity/OperationLog, 新表 | 1d |
 
 ### 数据库变更
 
@@ -121,16 +128,16 @@ CREATE TABLE organizer_apply (
 
 ### 任务清单
 
-| 编号 | 层级 | 任务 | 涉及文件 | 预计工时 |
-|------|------|------|---------|----------|
-| P2-ACA-01 | L0 | 活动表增加 `category`、`tags`、`organizer_id` 字段 | entity/Activity.java, init.sql | 0.5d |
-| P2-ACA-02 | L1 | 新建组织者专属路由 `/organizer` 及仪表盘视图 | OrganizerDashboard.vue, router/index.ts | 1.5d |
-| P2-ACA-03 | L1 | "我的活动"列表（按状态 Tab：草稿/已发布/进行中/已结束） | OrganizerDashboard.vue, ActivityController | 1d |
-| P2-ACA-04 | L1 | 重构活动创建页：增加地图选点组件（替代数字输入经纬度） | CreateActivity.vue, MapPicker.vue | 2d |
-| P2-ACA-05 | L1 | 活动创建增加：分类下拉、标签输入、封面图上传 | CreateActivity.vue, FileUploadController | 1.5d |
-| P2-ACA-06 | L2 | 活动编辑功能（草稿可全编辑，已发布仅可改描述/封面） | CreateActivity.vue 复用, ActivityService | 1.5d |
-| P2-ACA-07 | L2 | 组织者视角活动详情页（含报名名单、签到统计） | OrganizerActivityDetail.vue | 1d |
-| P2-ACA-08 | L3 | 活动模板功能（保存模板快速创建同类活动） | activity_template 表, 新页面 | 1.5d |
+| 编号 | 层级 | 状态 | 任务 | 涉及文件 | 预计工时 |
+|------|------|------|------|---------|----------|
+| P2-ACA-01 | L0 | ✅ | 活动表增加 `category`、`tags`、`organizer_id` 字段 | entity/Activity.java, init.sql | 0.5d |
+| P2-ACA-02 | L1 | ✅ | 新建组织者专属路由 `/organizer` 及仪表盘视图 | OrganizerDashboard.vue, router/index.ts | 1.5d |
+| P2-ACA-03 | L1 | ✅ | "我的活动"列表（按状态 Tab：草稿/已发布/进行中/已结束） | OrganizerDashboard.vue, ActivityController | 1d |
+| P2-ACA-04 | L1 | ✅ | 重构活动创建页：增加地图选点组件（替代数字输入经纬度） | CreateActivity.vue, MapPicker.vue | 2d |
+| P2-ACA-05 | L1 | ✅ | 活动创建增加：分类下拉、标签输入、封面图上传 | CreateActivity.vue, FileUploadController | 1.5d |
+| P2-ACA-06 | L2 | ✅ | 活动编辑功能（草稿可全编辑，已发布仅可改描述/封面） | CreateActivity.vue 复用, ActivityService | 1.5d |
+| P2-ACA-07 | L2 | ✅ | 组织者视角活动详情页（含报名名单、签到统计） | OrganizerActivityDetail.vue | 1d |
+| P2-ACA-08 | L3 | ⬜ | 活动模板功能（保存模板快速创建同类活动） | activity_template 表, 新页面 | 1.5d |
 
 ### 前端路由新增
 
@@ -159,18 +166,18 @@ CREATE TABLE organizer_apply (
 
 ### 任务清单
 
-| 编号 | 层级 | 任务 | 涉及文件 | 预计工时 |
-|------|------|------|---------|----------|
-| P2-AM-01 | L0 | 安装配置 GeoServer，发布校园矢量数据（Shapefile→PostGIS→WMS/WFS） | GeoServer 环境 | 2d |
-| P2-AM-02 | L0 | 准备校园 GIS 数据：建筑轮廓、道路、绿地、水系、POI | QGIS/PostGIS | 2d |
-| P2-AM-03 | L1 | 前端 map.ts 新增 GeoServer WMS/WFS 图层源配置工厂函数 | config/map.ts | 1d |
-| P2-AM-04 | L1 | BaseMap 支持多图层叠加（底图 + WMS + 标注层） | components/map/BaseMap.vue | 1.5d |
-| P2-AM-05 | L1 | 新增 GeoServerLayer 组件（封装 WMS Tile 请求，管理透明度/显隐） | components/map/GeoServerLayer.vue | 1d |
-| P2-AM-06 | L1 | 后端新增 `/api/map/layers` 接口，返回可用图层清单 | MapController, MapService | 0.5d |
-| P2-AM-07 | L2 | 图层控制面板（地图右上角抽屉：开关/透明度/图例） | components/map/LayerControl.vue | 2d |
-| P2-AM-08 | L2 | GeoServer CORS + 前端 WFS GetFeature 点击查询建筑信息 | SecurityConfig, Map.vue | 1.5d |
-| P2-AM-09 | L3 | 活动创建地图选点叠加 GeoServer 建筑图层辅助定位 | MapPicker.vue | 1d |
-| P2-AM-10 | L3 | 图层缓存与离线降级（Service Worker 缓存瓦片） | vite.config.ts, sw.js | 2d |
+| 编号 | 层级 | 状态 | 任务 | 涉及文件 | 预计工时 |
+|------|------|------|------|---------|----------|
+| P2-AM-01 | L0 | ⬜ | 安装配置 GeoServer，发布校园矢量数据（Shapefile→PostGIS→WMS/WFS） | GeoServer 环境 | 2d |
+| P2-AM-02 | L0 | ⬜ | 准备校园 GIS 数据：建筑轮廓、道路、绿地、水系、POI | QGIS/PostGIS | 2d |
+| P2-AM-03 | L1 | ✅ | 前端 map.ts 新增 GeoServer WMS/WFS 图层源配置工厂函数 | config/map.ts | 1d |
+| P2-AM-04 | L1 | ✅ | BaseMap 支持多图层叠加（底图 + WMS + 标注层）[通过 defineExpose(map,mapReady) 已实现] | components/map/BaseMap.vue | 1.5d |
+| P2-AM-05 | L1 | ✅ | 新增 GeoServer/WFS 图层组件（WfsLayer 矢量 + GeoServerLayer WMS 备选） | components/map/ | 1d |
+| P2-AM-06 | L1 | ✅ | 后端新增 `/api/map/layers` 接口，返回可用图层清单（静态数据） | MapController, MapService | 0.5d |
+| P2-AM-07 | L2 | ✅ | 图层控制面板（地图右上角：开关/透明度/加载状态） | components/map/LayerControl.vue | 2d |
+| P2-AM-08 | L2 | ✅ | Vite 代理 GeoServer CORS + 前端 WFS GetFeature 点击查询建筑属性弹窗 | vite.config.ts, Map.vue, WfsLayer.vue | 1.5d |
+| P2-AM-09 | L3 | ✅ | 活动创建地图选点叠加 GeoServer 建筑图层辅助定位 | MapPicker.vue | 1d |
+| P2-AM-10 | L3 | ⬜ | 图层缓存与离线降级（Service Worker 缓存瓦片） | vite.config.ts, sw.js | 2d |
 
 ### 地图图层架构（改造后）
 
@@ -219,14 +226,14 @@ MapLibre Map
 
 ### 任务清单
 
-| 编号 | 层级 | 任务 | 涉及文件 | 预计工时 |
-|------|------|------|---------|----------|
-| P2-AM-11 | L0 | 确定矿大南湖校区精确边界框（bBox）坐标 | 实地勘测/GIS 数据 | 0.5d |
-| P2-AM-12 | L1 | 配置 MapLibre `maxBounds` 限制地图可拖拽范围 | config/map.ts, useMap.ts | 0.5d |
-| P2-AM-13 | L1 | 配置 `minZoom`/`maxZoom` 限制缩放级别 | config/map.ts | 0.25d |
-| P2-AM-14 | L2 | 地图拖拽边界视觉反馈（超出弹性回弹提示） | useMap.ts | 0.5d |
-| P2-AM-15 | L2 | 后端校验：活动创建/签到时经纬度是否在校区范围内 | SpatialCalculator, ActivityService | 0.5d |
-| P2-AM-16 | L3 | 校区边界可视化图层（半透明边框叠加） | ActivityLayer.vue 或新组件 | 1d |
+| 编号 | 层级 | 状态 | 任务 | 涉及文件 | 预计工时 |
+|------|------|------|------|---------|----------|
+| P2-AM-11 | L0 | ✅ | 确定矿大南湖校区精确边界框（bBox）坐标 | 实地勘测/GIS 数据 | 0.5d |
+| P2-AM-12 | L1 | ✅ | 配置 MapLibre `maxBounds` 限制地图可拖拽范围 | config/map.ts, useMap.ts | 0.5d |
+| P2-AM-13 | L1 | ✅ | 配置 `minZoom`/`maxZoom` 限制缩放级别 | config/map.ts | 0.25d |
+| P2-AM-14 | L2 | ✅ | 地图拖拽边界视觉反馈（超出弹性回弹提示） | useMap.ts | 0.5d |
+| P2-AM-15 | L2 | ✅ | 后端校验：活动创建/签到时经纬度是否在校区范围内 | SpatialCalculator, ActivityService | 0.5d |
+| P2-AM-16 | L3 | ✅ | 校区边界可视化图层（半透明边框叠加） | ActivityLayer.vue 或新组件 | 1d |
 
 ### 边界参数配置（待实地确认）
 
@@ -300,12 +307,12 @@ public boolean isWithinCampus(double lng, double lat) {
 
 ### 功能点
 
-| 编号 | 功能 | 描述 | 工作量 |
-|------|------|------|--------|
-| GIS-B01 | 活动热力图 | 基于历史活动位置生成热力图，展示志愿活动高频区域 | 2d |
-| GIS-B02 | 服务覆盖率分析 | 以建筑为单位统计志愿活动覆盖情况，标注"服务盲区" | 2.5d |
-| GIS-B03 | 时段空间分布 | 按学期/月份筛选，动态展示活动空间分布的时序变化 | 2d |
-| GIS-B04 | 人数空间统计 | 按区域聚合志愿者人数，可视化人力资源分布 | 1.5d |
+| 编号 | 状态 | 功能 | 描述 | 工作量 |
+|------|------|------|------|--------|
+| GIS-B01 | ✅ | 活动热力图 | 基于历史活动位置生成热力图，展示志愿活动高频区域 | 2d |
+| GIS-B02 | ⬜ | 服务覆盖率分析 | 以建筑为单位统计志愿活动覆盖情况，标注"服务盲区" | 2.5d |
+| GIS-B03 | ⬜ | 时段空间分布 | 按学期/月份筛选，动态展示活动空间分布的时序变化 | 2d |
+| GIS-B04 | ⬜ | 人数空间统计 | 按区域聚合志愿者人数，可视化人力资源分布 | 1.5d |
 
 ### 技术要点
 
@@ -370,12 +377,12 @@ public boolean isWithinCampus(double lng, double lat) {
 
 ### 功能点
 
-| 编号 | 功能 | 描述 | 工作量 |
-|------|------|------|--------|
-| GIS-E01 | 围栏绘制工具 | 活动组织者在地图上绘制多边形签到区域 | 2d |
-| GIS-E02 | 围栏内签到校验 | 后端使用射线法（Ray Casting）判定 GPS 是否在多边形内 | 1.5d |
-| GIS-E03 | 多区域签到 | 同一活动支持多个签到区域（主会场/分会场） | 1.5d |
-| GIS-E04 | 围栏可视化 | 地图上半透明填充面展示签到范围 | 1d |
+| 编号 | 状态 | 功能 | 描述 | 工作量 |
+|------|------|------|------|--------|
+| GIS-E01 | ✅ | 围栏绘制工具 | 活动组织者在地图上绘制多边形签到区域 | 2d |
+| GIS-E02 | ✅ | 围栏内签到校验 | 后端使用射线法（Ray Casting）判定 GPS 是否在多边形内 | 1.5d |
+| GIS-E03 | ⬜ | 多区域签到 | 同一活动支持多个签到区域（主会场/分会场） | 1.5d |
+| GIS-E04 | ✅ | 围栏可视化 | 地图上半透明填充面展示签到范围 | 1d |
 
 ### 技术要点
 
@@ -384,29 +391,7 @@ public boolean isWithinCampus(double lng, double lat) {
 - 后端 `SpatialCalculator` 新增 `isPointInPolygon()` 方法
 - 兼容现有圆形签到逻辑（无围栏时保持 Haversine 500m）
 
----
 
-## 模块 F：实时位置共享与安全管理 [P2]
-
-### 模块定位
-
-大型志愿活动期间，志愿者可选共享位置，组织者在地图上实时查看人员分布。
-
-### 功能点
-
-| 编号 | 功能 | 描述 | 工作量 |
-|------|------|------|--------|
-| GIS-F01 | 位置共享开关 | 志愿者自主开启/关闭（仅活动期间有效） | 1.5d |
-| GIS-F02 | 实时位置地图 | 组织者地图上不同颜色标注在线志愿者（轮询/WebSocket） | 2.5d |
-| GIS-F03 | 电子围栏预警 | 志愿者超出活动区域时自动通知组织者 | 1.5d |
-| GIS-F04 | 一键集合 | 组织者发"集合"指令，志愿者收到推送+路线 | 3d |
-
-### 隐私设计
-
-- 位置共享仅活动期间有效，活动结束后自动清除轨迹
-- 需明确用户授权协议
-
----
 
 ## 模块 G：志愿足迹与个人时空档案 [P1]
 
@@ -416,12 +401,12 @@ public boolean isWithinCampus(double lng, double lat) {
 
 ### 功能点
 
-| 编号 | 功能 | 描述 | 工作量 |
-|------|------|------|--------|
-| GIS-G01 | 志愿足迹地图 | 标记所有参与活动位置，按时间连线 | 2d |
-| GIS-G02 | 时空统计面板 | 按学期/学年统计次数、时长、覆盖区域数 | 1.5d |
-| GIS-G03 | 志愿成就徽章 | 时空数据触发成就（"覆盖全校10栋建筑"等） | 2d |
-| GIS-G04 | 志愿地图海报 | Canvas 导出"我的志愿地图"分享图 | 1d |
+| 编号 | 状态 | 功能 | 描述 | 工作量 |
+|------|------|------|------|--------|
+| GIS-G01 | ✅ | 志愿足迹地图 | 标记所有参与活动位置，按时间连线 | 2d |
+| GIS-G02 | ✅ | 时空统计面板 | 按学期/学年统计次数、时长、覆盖区域数 | 1.5d |
+| GIS-G03 | ⬜ | 志愿成就徽章 | 时空数据触发成就（"覆盖全校10栋建筑"等） | 2d |
+| GIS-G04 | ⬜ | 志愿地图海报 | Canvas 导出"我的志愿地图"分享图 | 1d |
 
 ### 技术要点
 
@@ -637,13 +622,13 @@ volunteer-web:
 
 | 编号 | 任务 | 工时 |
 |------|------|------|
-| P2-AM-03 | `config/map.ts` 新增 GeoServer WMS/WFS 图层源工厂函数 | 1d |
-| P2-AM-04 | `BaseMap.vue` 支持多图层叠加（底图 + WMS + 标注层） | 1.5d |
-| P2-AM-05 | `GeoServerLayer.vue` 组件（封装 WMS Tile，管理透明度/显隐） | 1d |
-| P2-AM-07 | `LayerControl.vue` 图层控制面板（抽屉：开关/透明度/图例） | 2d |
-| P2-AM-08 | GeoServer CORS + WFS GetFeature 点击查询建筑信息 | 1.5d |
-| P2-AM-10 | 图层缓存与离线降级（Service Worker 缓存瓦片） | 2d |
-| P2-AM-11 | 确定矿大南湖校区精确边界框坐标 | 0.5d |
+| P2-AM-03 | `config/map.ts` 新增 GeoServer WMS/WFS 图层源工厂函数 | 1d | ✅ |
+| P2-AM-04 | `BaseMap.vue` 支持多图层叠加（底图 + WMS + 标注层） | 1.5d | ✅ |
+| P2-AM-05 | `WfsLayer.vue` + `GeoServerLayer.vue` 图层组件 | 1d | ✅ |
+| P2-AM-07 | `LayerControl.vue` 图层控制面板（开关/透明度/状态） | 2d | ✅ |
+| P2-AM-08 | Vite 代理 CORS + WFS GetFeature 点击查询建筑属性 | 1.5d | ✅ |
+| P2-AM-10 | 图层缓存与离线降级（Service Worker 缓存瓦片） | 2d | ⬜ |
+| P2-AM-11 | 确定矿大南湖校区精确边界框坐标 | 0.5d | ✅ |
 | P2-AM-12 | MapLibre `maxBounds` 限制拖拽范围 | 0.5d |
 | P2-AM-13 | `minZoom` / `maxZoom` 限制缩放级别 | 0.25d |
 | P2-AM-14 | 边界弹性回弹视觉反馈 | 0.5d |

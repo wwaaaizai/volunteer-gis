@@ -26,6 +26,12 @@ public class User {
     /** 手机号 */
     private String phone;
 
+    /** 年级（如 "2023"） */
+    private String grade;
+
+    /** 院系（如 "计算机科学与技术学院"） */
+    private String college;
+
     /** 角色：student / organizer / admin */
     private String role;
 

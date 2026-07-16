@@ -159,9 +159,31 @@
           </el-col>
         </el-row>
 
-        <!-- 报名上限 -->
-        <el-form-item label="报名上限" prop="maxParticipants">
-          <el-input-number v-model="form.maxParticipants" :min="1" :max="9999" />
+        <!-- 报名上限 + 预设志愿时长 -->
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="报名上限" prop="maxParticipants">
+              <el-input-number v-model="form.maxParticipants" :min="1" :max="9999" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="志愿时长(h)">
+              <el-input-number v-model="form.volunteerHours" :min="0" :max="999" :precision="1" style="width:100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 面向对象 -->
+        <el-form-item label="面向年级">
+          <el-input v-model="form.targetGrade" placeholder="如：2023,2024（逗号分隔，留空或填ALL表示不限）" />
+        </el-form-item>
+        <el-form-item label="面向院系">
+          <el-input v-model="form.targetCollege" placeholder="如：计算机学院,矿业学院（逗号分隔，留空或填ALL表示不限）" />
+        </el-form-item>
+
+        <!-- 归属组织 -->
+        <el-form-item label="归属组织">
+          <el-input v-model="form.organizationName" placeholder="如：校团委志愿者协会" />
         </el-form-item>
 
         <!-- 封面：上传 + AI 生成 -->
@@ -275,7 +297,10 @@ const categoryMap: Record<string, string> = {
 const form = reactive({
   title: '', description: '', category: '', tags: [] as string[],
   locationName: '', longitude: DEFAULT_CENTER[0], latitude: DEFAULT_CENTER[1],
-  startTime: '', endTime: '', maxParticipants: 50, coverImage: '',
+  startTime: '', endTime: '', maxParticipants: 50,
+  volunteerHours: undefined as number | undefined,
+  targetGrade: '', targetCollege: '', organizationName: '',
+  coverImage: '',
 })
 
 const rules = {
@@ -310,6 +335,10 @@ function applyTemplate(t: any) {
   form.tags = t.tags ? t.tags.split(',').filter(Boolean) : []
   form.locationName = t.locationName || ''
   form.maxParticipants = t.maxParticipants || 50
+  form.volunteerHours = t.volunteerHours ?? undefined
+  form.targetGrade = t.targetGrade || ''
+  form.targetCollege = t.targetCollege || ''
+  form.organizationName = t.organizationName || ''
   showTemplatePanel.value = false
   ElMessage.success(`已应用模板：${t.name}`)
 }
@@ -387,6 +416,9 @@ onMounted(async () => {
       longitude: data.longitude, latitude: data.latitude,
       startTime: data.startTime || '', endTime: data.endTime || '',
       maxParticipants: data.maxParticipants || 50,
+      volunteerHours: data.volunteerHours ?? undefined,
+      targetGrade: data.targetGrade || '', targetCollege: data.targetCollege || '',
+      organizationName: data.organizationName || '',
       coverImage: data.coverImage || '',
     })
   } catch {

@@ -133,6 +133,7 @@ npm run dev
 |------|---------|
 | 3306 | `netstat -ano \| findstr 3306` |
 | 9090 | `curl http://localhost:9090/api/auth/me` |
+| 9091 | geoserver |
 | 5173 | 浏览器打开 `http://localhost:5173` |
 
 #### 配置文件

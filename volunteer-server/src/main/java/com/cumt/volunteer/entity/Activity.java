@@ -44,6 +44,21 @@ public class Activity {
     /** 报名上限 */
     private Integer maxParticipants;
 
+    /** 预设志愿时长（小时） */
+    private BigDecimal volunteerHours;
+
+    /** 面向年级，逗号分隔（如 "2023,2024"），ALL=不限 */
+    private String targetGrade;
+
+    /** 面向院系，逗号分隔（如 "计算机学院,矿业学院"），ALL=不限 */
+    private String targetCollege;
+
+    /** 归属组织名称（冗余存储，创建时从组织者organization填充） */
+    private String organizationName;
+
+    /** 策划案 JSON（15章节结构化数据） */
+    private String proposal;
+
     /** 已报名人数 */
     private Integer signedCount;
 

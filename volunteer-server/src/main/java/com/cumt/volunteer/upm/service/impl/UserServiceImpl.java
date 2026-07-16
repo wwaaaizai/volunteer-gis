@@ -27,6 +27,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional
     public void register(String studentId, String password, String name, String phone,
+                         String grade, String college,
                          boolean applyOrganizer, String organization, String employeeId) {
         // 检查学号唯一性
         User exist = findByStudentId(studentId);
@@ -38,6 +39,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(passwordEncoder.encode(password));
         user.setName(name);
         user.setPhone(phone);
+        user.setGrade(grade);
+        user.setCollege(college);
         user.setRole("student");
         user.setTotalHours(BigDecimal.ZERO);
 
@@ -118,6 +121,68 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (name != null && !name.isBlank()) user.setName(name);
         if (phone != null && !phone.isBlank()) user.setPhone(phone);
         if (organization != null && !organization.isBlank()) user.setOrganization(organization);
+        updateById(user);
+    }
+
+    @Override
+    public List<User> listAllUsers() {
+        return list(new LambdaQueryWrapper<User>().orderByDesc(User::getCreatedAt));
+    }
+
+    @Override
+    @Transactional
+    public User createUser(String studentId, String password, String name, String phone,
+                           String role, String organization) {
+        User exist = findByStudentId(studentId);
+        if (exist != null) {
+            throw new RuntimeException("该学号已注册");
+        }
+        User user = new User();
+        user.setStudentId(studentId);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setName(name);
+        user.setPhone(phone);
+        user.setRole(role != null && !role.isBlank() ? role : "student");
+        user.setTotalHours(BigDecimal.ZERO);
+        if (organization != null && !organization.isBlank()) {
+            user.setOrganization(organization);
+        }
+        save(user);
+        return user;
+    }
+
+    @Override
+    public void updateUser(Long userId, String name, String phone, String role, String organization) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        if (name != null && !name.isBlank()) user.setName(name);
+        if (phone != null && !phone.isBlank()) user.setPhone(phone);
+        if (role != null && !role.isBlank()) user.setRole(role);
+        if (organization != null && !organization.isBlank()) user.setOrganization(organization);
+        updateById(user);
+    }
+
+    @Override
+    public void deleteUser(Long userId) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        if ("admin".equals(user.getRole())) {
+            throw new RuntimeException("不能删除管理员账户");
+        }
+        removeById(userId);
+    }
+
+    @Override
+    public void resetPassword(Long userId, String newPassword) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
         updateById(user);
     }
 }

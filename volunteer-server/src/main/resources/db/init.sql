@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS `user` (
     password    VARCHAR(255) NOT NULL           COMMENT '密码（bcrypt）',
     name        VARCHAR(64)  NOT NULL           COMMENT '姓名',
     phone       VARCHAR(16)                     COMMENT '手机号',
+    grade       VARCHAR(16)                     COMMENT '年级（如2023）',
+    college     VARCHAR(64)                     COMMENT '院系',
     role        VARCHAR(16)  NOT NULL DEFAULT 'student' COMMENT '角色：student/organizer/admin',
     organization VARCHAR(64)                    COMMENT '所属机构（组织者填写）',
     employee_id VARCHAR(32)                     COMMENT '工号（组织者填写）',
@@ -46,6 +48,11 @@ CREATE TABLE IF NOT EXISTS `activity` (
     signup_start     DATETIME                             COMMENT '报名开始时间',
     signup_end       DATETIME                             COMMENT '报名截止时间',
     max_participants INT            NOT NULL DEFAULT 50   COMMENT '报名上限',
+    volunteer_hours  DECIMAL(5,1)                         COMMENT '预设志愿时长（小时）',
+    target_grade     VARCHAR(128)                         COMMENT '面向年级，逗号分隔，ALL=不限',
+    target_college   VARCHAR(255)                         COMMENT '面向院系，逗号分隔，ALL=不限',
+    organization_name VARCHAR(128)                        COMMENT '归属组织名称（冗余存储）',
+    proposal         JSON                                  COMMENT '策划案（15章节结构化JSON）',
     signed_count     INT            NOT NULL DEFAULT 0    COMMENT '已报名人数',
     cover_image      VARCHAR(255)                         COMMENT '封面图片路径',
     status           VARCHAR(16)    NOT NULL DEFAULT 'draft' COMMENT '状态：draft/published/ongoing/ended/cancelled',
@@ -160,6 +167,61 @@ PREPARE stmt_t FROM @sql_t; EXECUTE stmt_t; DEALLOCATE PREPARE stmt_t;
 UPDATE activity SET organizer_id = creator_id WHERE organizer_id IS NULL;
 UPDATE activity SET category = '' WHERE category IS NULL;
 UPDATE activity SET tags = '' WHERE tags IS NULL;
+
+-- ============================================
+-- Phase 5 增量迁移：活动属性规范化（预设时长/面向对象/归属组织/策划案）+ 用户年级/院系
+-- ============================================
+
+-- activity 表新增字段（INFORMATION_SCHEMA 兼容检测）
+SET @col_vh = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'volunteer_hours');
+SET @sql_vh = IF(@col_vh = 0,
+  'ALTER TABLE activity ADD COLUMN volunteer_hours DECIMAL(5,1) COMMENT ''预设志愿时长（小时）'' AFTER max_participants',
+  'SELECT ''Column volunteer_hours already exists''');
+PREPARE stmt_vh FROM @sql_vh; EXECUTE stmt_vh; DEALLOCATE PREPARE stmt_vh;
+
+SET @col_tg = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'target_grade');
+SET @sql_tg = IF(@col_tg = 0,
+  'ALTER TABLE activity ADD COLUMN target_grade VARCHAR(128) COMMENT ''面向年级，逗号分隔，ALL=不限'' AFTER volunteer_hours',
+  'SELECT ''Column target_grade already exists''');
+PREPARE stmt_tg FROM @sql_tg; EXECUTE stmt_tg; DEALLOCATE PREPARE stmt_tg;
+
+SET @col_tc = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'target_college');
+SET @sql_tc = IF(@col_tc = 0,
+  'ALTER TABLE activity ADD COLUMN target_college VARCHAR(255) COMMENT ''面向院系，逗号分隔，ALL=不限'' AFTER target_grade',
+  'SELECT ''Column target_college already exists''');
+PREPARE stmt_tc FROM @sql_tc; EXECUTE stmt_tc; DEALLOCATE PREPARE stmt_tc;
+
+SET @col_on = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'organization_name');
+SET @sql_on = IF(@col_on = 0,
+  'ALTER TABLE activity ADD COLUMN organization_name VARCHAR(128) COMMENT ''归属组织名称（冗余存储）'' AFTER target_college',
+  'SELECT ''Column organization_name already exists''');
+PREPARE stmt_on FROM @sql_on; EXECUTE stmt_on; DEALLOCATE PREPARE stmt_on;
+
+SET @col_pr = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'proposal');
+SET @sql_pr = IF(@col_pr = 0,
+  'ALTER TABLE activity ADD COLUMN proposal JSON COMMENT ''策划案（15章节结构化JSON）'' AFTER organization_name',
+  'SELECT ''Column proposal already exists''');
+PREPARE stmt_pr FROM @sql_pr; EXECUTE stmt_pr; DEALLOCATE PREPARE stmt_pr;
+
+-- user 表新增字段（INFORMATION_SCHEMA 兼容检测）
+SET @col_gr = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'user' AND COLUMN_NAME = 'grade');
+SET @sql_gr = IF(@col_gr = 0,
+  'ALTER TABLE `user` ADD COLUMN grade VARCHAR(16) COMMENT ''年级（如2023）'' AFTER phone',
+  'SELECT ''Column grade already exists''');
+PREPARE stmt_gr FROM @sql_gr; EXECUTE stmt_gr; DEALLOCATE PREPARE stmt_gr;
+
+SET @col_cl = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'user' AND COLUMN_NAME = 'college');
+SET @sql_cl = IF(@col_cl = 0,
+  'ALTER TABLE `user` ADD COLUMN college VARCHAR(64) COMMENT ''院系'' AFTER grade',
+  'SELECT ''Column college already exists''');
+PREPARE stmt_cl FROM @sql_cl; EXECUTE stmt_cl; DEALLOCATE PREPARE stmt_cl;
 
 -- ============================================
 -- Phase 3 增量迁移：报名审核 + AI 功能支撑

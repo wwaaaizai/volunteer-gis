@@ -7,7 +7,7 @@
 | 文档 | 路径 | 内容 | 阅读时机 |
 |------|------|------|----------|
 | AI 上下文 | `doc/AI_CONTEXT.md` | 项目全貌速览、架构、技术栈、业务规则、文件映射 | **开始任何编码工作前必读** |
-| API 参考 | `doc/API_REFERENCE.md` | 18 个 REST 端点的完整请求/响应格式 | 修改后端 API 或前端请求时 |
+| API 参考 | `doc/API_REFERENCE.md` | 25+ 个 REST 端点的完整请求/响应格式 | 修改后端 API 或前端请求时 |
 | 数据库参考 | `doc/DATABASE.md` | 6 张表 DDL、索引、状态枚举、表关系 | 修改数据库结构或查询逻辑时 |
 | 数据库迁移指引 | `doc/DATABASE_MIGRATIONS.md` | 增量变更日志、各 Phase 同步 SQL、验证方法 | **拉取新代码后遇到数据库报错时** |
 | 前端结构 | `doc/FRONTEND_STRUCTURE.md` | 路由、组件树、Pinia 状态、Axios 拦截器、交互流程 | 修改前端组件或状态管理时 |
@@ -20,6 +20,7 @@
 | MVP 开发计划 | `docs/MVP开发计划.md` | MVP 功能范围、技术栈简化、开发里程碑 | 了解项目范围和阶段规划时 |
 | 文档格式规范 | `docs/markdown文档生成格式规范.md` | Markdown 文档格式、术语一致性、编号规范 | 生成或修改文档时 |
 | Phase 2 任务规划 | `docs/Phase2任务规划与GIS扩展方案.md` | 任务规划规范、4 项需求拆解、8 个 GIS 扩展模块、实施路线图 | 进入 Phase 2 开发前 |
+| P2 GIS 开发总结 | `docs/P2-GIS开发工作总结.md` | GeoServer 接入、图层、UI/图标、移动端适配、认证等完整工作总结 | 了解 Phase 2 已完成工作全貌时 |
 
 ## 架构决策记录（docs/adr/）
 

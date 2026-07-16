@@ -33,6 +33,8 @@ public class AuthController {
                 body.get("password"),
                 body.get("name"),
                 body.get("phone"),
+                body.get("grade"),
+                body.get("college"),
                 applyOrganizer,
                 body.get("organization"),
                 body.get("employeeId")
@@ -99,13 +101,20 @@ public class AuthController {
         String name = (fullUser != null && fullUser.getName() != null) ? fullUser.getName() : "";
         String phone = (fullUser != null && fullUser.getPhone() != null) ? fullUser.getPhone() : "";
         String org = (fullUser != null && fullUser.getOrganization() != null) ? fullUser.getOrganization() : "";
+        String grade = (fullUser != null && fullUser.getGrade() != null) ? fullUser.getGrade() : "";
+        String college = (fullUser != null && fullUser.getCollege() != null) ? fullUser.getCollege() : "";
+        String totalHours = (fullUser != null && fullUser.getTotalHours() != null)
+                ? fullUser.getTotalHours().toString() : "0";
         return Result.ok(Map.of(
                 "userId", user.getUserId().toString(),
                 "studentId", user.getStudentId(),
                 "role", user.getRole(),
                 "name", name,
                 "phone", phone,
-                "organization", org
+                "grade", grade,
+                "college", college,
+                "organization", org,
+                "totalHours", totalHours
         ));
     }
 }

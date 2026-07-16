@@ -5,12 +5,13 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cumt.volunteer.aca.mapper.ActivityMapper;
 import com.cumt.volunteer.aca.service.ActivityService;
 import com.cumt.volunteer.entity.Activity;
+import com.cumt.volunteer.entity.User;
 import com.cumt.volunteer.geo.model.GeoPoint;
 import com.cumt.volunteer.geo.service.SpatialCalculator;
+import com.cumt.volunteer.upm.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> implements ActivityService {
 
     private final SpatialCalculator spatialCalculator;
+    private final UserMapper userMapper;
 
     @Override
     public void createActivity(Activity activity, Long creatorId) {
@@ -27,6 +29,13 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         // 设置组织者ID（如果未指定，则等于creatorId）
         if (activity.getOrganizerId() == null) {
             activity.setOrganizerId(creatorId);
+        }
+        // 从创建者信息填充归属组织名称
+        if (activity.getOrganizationName() == null || activity.getOrganizationName().isBlank()) {
+            User creator = userMapper.selectById(creatorId);
+            if (creator != null && creator.getOrganization() != null) {
+                activity.setOrganizationName(creator.getOrganization());
+            }
         }
         activity.setStatus("draft");
         activity.setSignedCount(0);
@@ -99,6 +108,23 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         }
         activity.setCheckinRegion(geojson);
         updateById(activity);
+    }
+
+    @Override
+    public void deleteActivity(Long activityId) {
+        Activity activity = getById(activityId);
+        if (activity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        // MyBatis-Plus @TableLogic 自动将 deleted 设为 1
+        removeById(activityId);
+    }
+
+    @Override
+    public List<Activity> listAll() {
+        LambdaQueryWrapper<Activity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(Activity::getCreatedAt);
+        return list(wrapper);
     }
 
     @Override

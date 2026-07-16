@@ -8,7 +8,10 @@ export interface UserInfo {
   role: string
   name?: string
   phone?: string
+  grade?: string
+  college?: string
   organization?: string
+  totalHours?: string
 }
 
 export const useUserStore = defineStore('user', () => {

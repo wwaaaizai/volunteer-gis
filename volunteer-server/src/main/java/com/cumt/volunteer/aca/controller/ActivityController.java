@@ -21,9 +21,13 @@ public class ActivityController {
 
     /**
      * 获取活动列表
+     * <p>管理员传 {@code showAll=true} 可查看全部活动（含草稿/进行中/已结束）。</p>
      */
     @GetMapping
-    public Result<List<Activity>> listActivities() {
+    public Result<List<Activity>> listActivities(@RequestParam(required = false, defaultValue = "false") boolean showAll) {
+        if (showAll) {
+            return Result.ok(activityService.listAll());
+        }
         return Result.ok(activityService.searchActivities(null));
     }
 
@@ -104,6 +108,16 @@ public class ActivityController {
         String geojson = body.get("geojson");
         activityService.saveGeofence(id, geojson);
         return Result.ok("围栏保存成功");
+    }
+
+    /**
+     * 删除活动（管理员，逻辑删除）
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('admin')")
+    public Result<?> deleteActivity(@PathVariable Long id) {
+        activityService.deleteActivity(id);
+        return Result.ok("删除成功");
     }
 
     /**

@@ -25,6 +25,12 @@ const routes = [
         meta: { title: '活动地图' },
       },
       {
+        path: 'my',
+        name: 'My',
+        component: () => import('@/views/My.vue'),
+        meta: { title: '我的' },
+      },
+      {
         path: 'activity/:id',
         name: 'ActivityDetail',
         component: () => import('@/views/ActivityDetail.vue'),
@@ -95,6 +101,12 @@ const routes = [
         name: 'OrganizerProfile',
         component: () => import('@/views/OrganizerProfile.vue'),
         meta: { title: '个人信息', roles: ['organizer', 'admin'] },
+      },
+      {
+        path: 'scan',
+        name: 'Scan',
+        component: () => import('@/views/Scan.vue'),
+        meta: { title: '扫一扫' },
       },
     ],
   },

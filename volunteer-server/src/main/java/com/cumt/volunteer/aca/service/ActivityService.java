@@ -39,4 +39,14 @@ public interface ActivityService extends IService<Activity> {
      * 附近活动推荐：按距离排序已发布活动
      */
     List<Activity> listNearby(double lng, double lat);
+
+    /**
+     * 删除活动（逻辑删除，仅管理员可操作）
+     */
+    void deleteActivity(Long activityId);
+
+    /**
+     * 查询所有活动（管理员视角，不做状态过滤）
+     */
+    List<Activity> listAll();
 }

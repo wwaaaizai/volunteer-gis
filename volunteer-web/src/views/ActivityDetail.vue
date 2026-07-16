@@ -15,11 +15,20 @@
 
       <el-descriptions :column="2" border>
         <el-descriptions-item label="活动地点">{{ activity.locationName }}</el-descriptions-item>
+        <el-descriptions-item label="归属组织">{{ activity.organizationName || '未填写' }}</el-descriptions-item>
+        <el-descriptions-item label="志愿时长">{{ activity.volunteerHours != null ? activity.volunteerHours + ' 小时' : '未设定' }}</el-descriptions-item>
         <el-descriptions-item label="报名人数">
           {{ activity.signedCount }} / {{ activity.maxParticipants }}
         </el-descriptions-item>
-        <el-descriptions-item label="开始时间">{{ activity.startTime }}</el-descriptions-item>
-        <el-descriptions-item label="结束时间">{{ activity.endTime }}</el-descriptions-item>
+        <el-descriptions-item label="面向年级">{{ targetGradeText }}</el-descriptions-item>
+        <el-descriptions-item label="面向院系">{{ targetCollegeText }}</el-descriptions-item>
+        <el-descriptions-item label="报名时间">{{ signupTimeText }}</el-descriptions-item>
+        <el-descriptions-item label="活动时间">{{ activityTimeText }}</el-descriptions-item>
+        <el-descriptions-item label="活动分类">{{ categoryMap[activity.category] || activity.category || '未分类' }}</el-descriptions-item>
+        <el-descriptions-item label="活动标签">
+          <el-tag v-for="tag in tagList" :key="tag" size="small" style="margin-right:4px">{{ tag }}</el-tag>
+          <span v-if="tagList.length === 0" style="color:#909399">无</span>
+        </el-descriptions-item>
       </el-descriptions>
 
       <div class="desc-section">
@@ -63,6 +72,42 @@ const canSignup = computed(() => {
   if (!activity.value) return false
   return activity.value.status === 'published' &&
          activity.value.signedCount < activity.value.maxParticipants
+})
+
+const categoryMap: Record<string, string> = {
+  environmental: '环保', support: '助学', education: '支教',
+  community: '社区', campus: '校园', other: '其他',
+}
+
+const tagList = computed(() => {
+  if (!activity.value?.tags) return []
+  return activity.value.tags.split(',').filter(Boolean)
+})
+
+const targetGradeText = computed(() => {
+  const t = activity.value?.targetGrade
+  if (!t || t === 'ALL') return '不限年级'
+  return t
+})
+
+const targetCollegeText = computed(() => {
+  const t = activity.value?.targetCollege
+  if (!t || t === 'ALL') return '不限院系'
+  return t
+})
+
+const signupTimeText = computed(() => {
+  const a = activity.value
+  if (!a) return '未设定'
+  const start = a.signupStart || '未设定'
+  const end = a.signupEnd || '未设定'
+  return `${start} 至 ${end}`
+})
+
+const activityTimeText = computed(() => {
+  const a = activity.value
+  if (!a) return '未设定'
+  return `${a.startTime || '未设定'} 至 ${a.endTime || '未设定'}`
 })
 
 const signupBtnText = computed(() => {
