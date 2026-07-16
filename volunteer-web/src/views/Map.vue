@@ -17,7 +17,7 @@
       :layer="getLayerMeta(name)"
       :visible="isLayerVisible(name)"
       :fill-opacity="state.opacity"
-      :keep-queryable="name === 'ol_campus:jianzhu'"
+      :keep-queryable="name === 'ol_campus:jianzhu' || name === 'ol_campus:yundongchang'"
       @layer-ready="onLayerReady"
       @layer-error="onLayerError"
       @feature-click="onBuildingClick"
@@ -145,10 +145,7 @@
           </div>
         </div>
         <div class="drawer-section drawer-props">
-          <div class="prop-item" v-for="(value, key) in buildingDisplayProps" :key="key">
-            <span class="prop-label">{{ key }}</span>
-            <span class="prop-value">{{ value }}</span>
-          </div>
+          <p class="building-name-text">{{ buildingName || '未知建筑' }}</p>
         </div>
       </div>
     </div>
@@ -365,18 +362,14 @@ function onLayerError(name: string, message: string) {
 
 const selectedBuilding = ref<Record<string, unknown> | null>(null)
 
-/** 过滤掉 wfs 内部字段，保留可展示的属性 */
-const BUILDING_SKIP_KEYS = new Set(['fid', 'osm_id', 'gid', 'id', 'OBJECTID', 'Shape_Leng', 'Shape_Area'])
+const selectedLayerName = ref<string>('')
 
-const buildingDisplayProps = computed(() => {
-  if (!selectedBuilding.value) return {}
-  const props: Record<string, string> = {}
-  for (const [k, v] of Object.entries(selectedBuilding.value)) {
-    if (BUILDING_SKIP_KEYS.has(k)) continue
-    if (v === null || v === undefined) continue
-    props[k] = String(v)
-  }
-  return props
+/** 从 WFS 属性中提取名称：jianzhu 取 Entity 字段，yundongchang 取 name 字段，后续可扩展为后端信息库映射 */
+const buildingName = computed(() => {
+  if (!selectedBuilding.value) return ''
+  const field = selectedLayerName.value === 'ol_campus:yundongchang' ? 'name' : 'Entity'
+  const val = selectedBuilding.value[field]
+  return val != null ? String(val) : ''
 })
 
 const HIGHLIGHT_SOURCE = 'building-highlight'
@@ -412,7 +405,8 @@ function clearHighlight() {
   try { if (map.getSource(HIGHLIGHT_SOURCE)) map.removeSource(HIGHLIGHT_SOURCE) } catch { /* */ }
 }
 
-function onBuildingClick(_layerName: string, properties: Record<string, unknown>, geometry?: unknown) {
+function onBuildingClick(layerName: string, properties: Record<string, unknown>, geometry?: unknown) {
+  selectedLayerName.value = layerName
   selectedBuilding.value = properties
   drawerContent.value = { type: 'building', properties }
   drawerMode.value = 'peek'
@@ -970,6 +964,13 @@ onUnmounted(() => {
 .prop-value {
   color: #303133;
   word-break: break-all;
+}
+
+.building-name-text {
+  color: #303133;
+  font-size: 15px;
+  font-weight: 500;
+  margin: 0;
 }
 
 /* ──── 热力图 ──────────────────────────────────── */
