@@ -279,6 +279,7 @@ npm run dev
 |  已完成 | 用户注册/登录、JWT 鉴权、三重 RBAC(student/organizer/admin)、活动 CRUD + 发布、GeoJSON API、活动地图、报名/取消、定位签到/签退（围栏+圆形）、Haversine 距离校验、射线法多边形判定、签退自动算时长 |
 |  Phase 2 已完成 | 组织者角色全链路（申请/审批/仪表盘）、活动分类/标签/封面上传、MapPicker 地图选点、GeofenceEditor 围栏绘制、签到围栏校验、活动热力图（按分类/时间筛选）、志愿足迹地图+时间线、附近活动推荐、报名审核(通过/拒绝)、校区边界限制(maxBounds+zoom)、操作日志表、AI 描述/封面生成 |
 |  已实现（GeoServer） | WFS 矢量图层叠加（useWfsLayer + wgs84ToGcj02 零偏移）、WmsLayer 栅格备选、建筑物默认隐藏+keepQueryable 点击选中高亮(P2-AM-08)、底图标准/卫星图标切换、建筑/运动场图标开关 |
+|  已实现（Student） | 课表导入解析(.ics) + 日历视图展示(10小节×7天,rowspan=2) + 按具体日期展示周课 + 空闲时间活动筛选 |
 |  待开发 | GeoServer WMS 图层叠加、离线缓存(Service Worker)、活动模板功能、地图范围定时校验、PostGIS 迁移 |
 |  Phase 3 | Redis 缓存、小程序接入、3D 校园可视化、路径导航、实时位置共享 |
 
@@ -319,12 +320,15 @@ npm run dev
 | `volunteer-web/src/components/map/GeofenceEditor.vue` | 签到围栏绘制组件 |
 | `volunteer-web/src/components/map/MapPicker.vue` | 地图选点组件 |
 | `volunteer-web/src/utils/coordConvert.ts` | WGS-84 ↔ GCJ-02 坐标转换 |
+| `volunteer-web/src/utils/icsParser.ts` | ICS 课表文件解析器（UTC→北京时区+大节映射） |
+| `volunteer-web/src/stores/course.ts` | Pinia 课表状态 + 空闲时段计算 |
 | `volunteer-web/src/views/Map.vue` | 地图主页（BaseMap+ActivityLayer+WfsLayer+热力图+底图切换+建筑开关+建筑点击高亮） |
 | `volunteer-web/src/views/GeofenceEdit.vue` | 围栏编辑页 |
 | `volunteer-web/src/views/MyFootprint.vue` | 志愿足迹页 |
 | `volunteer-web/src/views/OrganizerDashboard.vue` | 组织者仪表盘 |
 | `volunteer-web/src/views/OrganizerActivityDetail.vue` | 组织者活动详情 |
 | `volunteer-web/src/views/OrganizerProfile.vue` | 组织者个人信息 |
+| `volunteer-web/src/views/CourseSchedule.vue` | 课表日历视图 + 空闲时段活动筛选 |
 | `volunteer-web/src/router/index.ts` | 路由表+守卫 |
 | `volunteer-web/src/stores/user.ts` | Pinia 用户状态 |
 | `volunteer-web/src/api/index.ts` | Axios 实例+拦截器 |

@@ -45,6 +45,7 @@ router/index.ts → createWebHistory()
 | /organizer/activity/:id | OrganizerActivityDetail.vue | roles: ['organizer', 'admin'] | 活动详情（含报名名单+签到统计） |
 | /organizer/geofence/:id | GeofenceEdit.vue | roles: ['organizer', 'admin'] | 签到围栏编辑 |
 | /organizer/profile | OrganizerProfile.vue | roles: ['organizer', 'admin'] | 组织者个人信息 |
+| /course-schedule | CourseSchedule.vue | | 课表日历视图 + 空闲时段活动筛选 |
 
 **路由守卫 (`router.beforeEach`)**:
 1. 有 token 但无 user → `userStore.fetchUser()` → 调 `/api/auth/me`
@@ -70,6 +71,7 @@ App.vue
     │   │   ├── 我的报名 (/my-signups)
     │   │   ├── 签到 (/checkin)
     │   │   ├── 志愿足迹 (/my-footprint)
+    │   │   ├── 课程表 (/course-schedule) [v-if="isStudent"]
     │   │   ├── 管理后台 (/admin) [v-if="isAdmin"]
     │   │   └── 组织者后台 (/organizer) [v-if="isOrganizer || isAdmin"]
     │   └── el-dropdown → "退出登录"
@@ -116,6 +118,11 @@ App.vue
         │   └── 审核报名 → PUT /api/signups/{id}/review
         └── OrganizerProfile.vue  组织者个人信息
             └── el-form → PUT /api/auth/profile
+        └── CourseSchedule.vue  课表日历
+            ├── el-upload → 导入 .ics 文件 → parseIcs()
+            ├── el-calendar → 周视图 (5大节 × 7天)
+            ├── el-dialog → 课程详情（教师/学分/备注）
+            └── 空闲时段活动筛选 → GET /api/activities + 本地时间匹配
 ```
 
 ---
@@ -138,6 +145,28 @@ useUserStore = defineStore('user')
 └── logout()
     ├── 清除 token (localStorage.removeItem)
     └── user.value = null
+```
+
+**文件**: `src/stores/course.ts`
+
+```
+useCourseStore = defineStore('course')
+├── state
+│   ├── courses: ParsedCourse[]      (解析后的课程列表)
+│   ├── sourceText: string           (原始 ICS 文本，localStorage 持久化)
+│   ├── hasImported: boolean
+│   └── weekStartDate: string        (当前展示周的周一日期)
+├── getters
+│   ├── weekNumber: number           (第几周)
+│   ├── weekDays: WeekDay[]          (周一~周日 + 具体日期)
+│   ├── coursesBySlot: Map           (weekDay, bigPeriod) → ParsedCourse
+│   ├── currentWeekCourses           (当前周课程)
+│   └── freeSlots: FreeSlot[]        (空闲时段列表)
+├── importIcs(text) → parseIcs() → 存入 localStorage
+├── setWeek(date): 切换查看周
+├── nextWeek() / prevWeek(): 周导航
+├── clearCourses(): 清空
+└── init(): 从 localStorage 恢复
 ```
 
 **数据流**：
@@ -336,6 +365,8 @@ Register.vue (applyAsOrganizer=true)
 | src/App.vue | 根组件：纯 `<router-view>` |
 | src/router/index.ts | 路由表 + beforeEach 守卫（支持 meta.roles 数组） |
 | src/stores/user.ts | Pinia: 登录状态 + token 管理 |
+| src/stores/course.ts | Pinia: 课表数据 + 空闲时段计算 |
+| src/utils/icsParser.ts | ICS 课表文件解析器（UTC→北京时区+大节映射） |
 | src/api/index.ts | Axios: 拦截器 + 统一错误处理 |
 | src/config/map.ts | 地图集中配置（天地图WMTS源/GeoServer WMS-WFS工厂/图层清单/边界常量） |
 | src/composables/useMap.ts | MapLibre 实例生命周期（maxBounds+zoom 限制） |
@@ -363,5 +394,7 @@ Register.vue (applyAsOrganizer=true)
 | src/views/OrganizerDashboard.vue | 组织者仪表盘 |
 | src/views/OrganizerActivityDetail.vue | 组织者活动详情 |
 | src/views/OrganizerProfile.vue | 组织者个人信息页 |
+| src/views/My.vue | 学生"我的"页面（功能菜单入口） |
+| src/views/CourseSchedule.vue | 课表日历视图 + 空闲时段活动筛选 |
 | vite.config.ts | Vite + 代理 + @ 别名 |
 | package.json | 依赖清单 |

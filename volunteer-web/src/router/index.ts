@@ -108,6 +108,12 @@ const routes = [
         component: () => import('@/views/Scan.vue'),
         meta: { title: '扫一扫' },
       },
+      {
+        path: 'course-schedule',
+        name: 'CourseSchedule',
+        component: () => import('@/views/CourseSchedule.vue'),
+        meta: { title: '课程表' },
+      },
     ],
   },
 ]

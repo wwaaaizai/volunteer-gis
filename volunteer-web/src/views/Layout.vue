@@ -81,6 +81,7 @@ const navItems = computed<NavItem[]>(() => {
   const role = userStore.user?.role
   if (role === 'student') return [
     { index: '/', path: '/', label: '活动地图' },
+    { index: '/course-schedule', path: '/course-schedule', label: '课程表' },
     { index: '/my-signups', path: '/my-signups', label: '我的报名' },
     { index: '/my-footprint', path: '/my-footprint', label: '志愿足迹' },
     { index: '/my', path: '/my', label: '我的' },

@@ -19,6 +19,20 @@
     <div class="menu-section">
       <!-- ===== 学生 ===== -->
       <template v-if="role === 'student'">
+        <div class="menu-item" @click="router.push('/course-schedule')">
+          <span class="menu-icon" style="color:#409eff">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="8" y1="9" x2="16" y2="9" />
+              <line x1="8" y1="13" x2="16" y2="13" />
+              <line x1="8" y1="17" x2="12" y2="17" />
+            </svg>
+          </span>
+          <span class="menu-label">课程表</span>
+          <span class="menu-arrow">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+          </span>
+        </div>
         <div class="menu-item" @click="router.push('/my-signups')">
           <span class="menu-icon">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
