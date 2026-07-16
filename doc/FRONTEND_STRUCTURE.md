@@ -223,7 +223,8 @@ server.port = 5173
 server.proxy:
   /api        → http://localhost:8080
   /uploads    → http://localhost:8080
-  /geoserver  → http://localhost:9091  (GeoServer WMS/WFS，避免 CORS)
+  /geoserver  → VITE_GEOSERVER_URL（默认 http://localhost:9091）(GeoServer WMS/WFS，避免 CORS)
+                支持 .env.local 覆盖，用于其他设备连接主机 GeoServer
 
 resolve.alias:
   @ → src/

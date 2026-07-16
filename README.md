@@ -147,6 +147,7 @@ npm run dev
 ```
 VITE_USE_MOCK=false
 VITE_TIANDITU_KEY=你的天地图Key
+VITE_GEOSERVER_URL=http://localhost:9091
 ```
 
 ### 天地图 API Key
@@ -256,6 +257,91 @@ refactor: 重构签到距离计算逻辑
 | 端口 8080 被占用 | `netstat -ano | findstr 8080` 查找并关闭占用进程 |
 | `mvnw` 命令不识别 | 确认 JDK 17 已安装，`JAVA_HOME` 环境变量已设置 |
 | 拉代码有冲突 | `git stash` → `git pull` → `git stash pop` |
+
+## 多设备演示配置（GeoServer WFS 图层）
+
+> 适用于 GeoServer 仅安装在一台主机上，需要供多台设备（手机、平板、笔记本）通过浏览器演示 WFS 矢量图层的场景。
+
+### 架构
+
+```
+┌────────────────────────────────────────────┐
+│  开发主机 (Windows，部署 GeoServer)          │
+│                                            │
+│  GeoServer :9091  ←── Vite 代理 ──→ :5173  │
+│  Backend    :8081  ←── Vite 代理            │
+│                   ↓                        │
+│           移动热点 DHCP 网关                  │
+│           IP: 192.168.137.1 (固定)          │
+└───────────────────┬────────────────────────┘
+                    │ WiFi
+       ┌────────────┼────────────┐
+       ▼            ▼            ▼
+     演示手机     演示平板     演示电脑
+     (浏览器)     (浏览器)    (浏览器/Vite)
+```
+
+### 主机开启移动热点
+
+Windows 设置 → 网络和 Internet → 移动热点 → 开启。
+
+Windows 移动热点网关 IP 固定为 **192.168.137.1**，断开重连不会改变。
+
+> 不要用手机开热点给主机连 — 手机热点通常开启 AP 隔离（客户端间不能通信），且 DHCP 分配的 IP 每次会变。
+
+### 其他设备配置与启动
+
+**方案 A：只使用浏览器演示（推荐）**
+
+其他设备不需要运行任何代码，连接热点后在浏览器访问 `http://192.168.137.1:5173` 即可。
+
+主机启动命令：
+
+```bash
+cd volunteer-web
+npm run dev:host    # 等效 vite --host 0.0.0.0，监听局域网
+```
+
+Vite 代理运行在主机本地，`/geoserver` 请求由主机转发给 `localhost:9091`，其他设备无需关心 GeoServer 地址。
+
+**方案 B：其他设备运行完整前后端**
+
+需要同时调试后端和前端代码，并且需要wfs图层数据时使用，不进行调试按照上方仅本地启动即可。其他设备克隆同一套代码后：
+
+```bash
+# 1. 创建 .env.local，指向主机 GeoServer
+echo VITE_GEOSERVER_URL=http://192.168.137.1:9091 > volunteer-web/.env.local
+
+# 2. 启动后端（端口不可与主机冲突）
+cd volunteer-server
+./mvnw spring-boot:run
+
+# 3. 启动前端（同样需要 --host）
+cd volunteer-web
+npm run dev:host
+```
+
+### 故障排查
+
+| 现象 | 可能原因 | 解决 |
+|------|---------|------|
+| 图层显示"加载失败" | 配置错误 | 方案 A 不需要改配置；方案 B 确认 `.env.local` 中 IP 为 `192.168.137.1` |
+| `http://192.168.137.1:5173` 无法访问 | 防火墙拦截 | 管理员 PowerShell 执行：`New-NetFirewallRule -DisplayName "Vite" -Direction Inbound -LocalPort 5173 -Protocol TCP -Action Allow` |
+| 页面打开但图层一直"加载中" | Vite 未监听局域网 | 确认使用 `npm run dev:host`（`--host 0.0.0.0`），而非 `npm run dev` |
+| 设备间无法 ping 通 | 热点异常或有 AP 隔离 | 换用 Windows 移动热点，避免手机热点 |
+| 主机重启后图层失败 | IP 变了 | Windows 移动热点网关始终为 `192.168.137.1`，不会变 |
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `VITE_GEOSERVER_URL` | `http://localhost:9091` | GeoServer 地址（Vite 代理目标） |
+| `VITE_USE_MOCK` | `false` | 是否启用前端 MSW Mock |
+| `VITE_TIANDITU_KEY` | — | 天地图 API Key |
+
+所有设备共用同一套代码，通过 `volunteer-web/.env.local` 区分本机/远程 GeoServer 地址（`.env.local` 已被 `.gitignore` 忽略，不会提交）。
+
+---
 
 ## 文档索引
 
