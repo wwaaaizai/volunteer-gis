@@ -1031,7 +1031,7 @@ onUnmounted(() => {
 /* ──── GIS分析按钮（热力图按钮下方，不重叠）─── */
 .gis-tool-btn {
   position: absolute;
-  bottom: 76px;
+  bottom: 230px;
   right: 12px;
   z-index: 10;
   background: linear-gradient(135deg, #409eff, #66b1ff);
@@ -1050,7 +1050,7 @@ onUnmounted(() => {
 }
 .gis-tool-btn:hover { transform: scale(1.05); }
 .gis-tool-btn--mobile {
-  bottom: 64px;
+  bottom: 210px;
   right: 8px;
   padding: 6px 12px;
   font-size: 11px;
