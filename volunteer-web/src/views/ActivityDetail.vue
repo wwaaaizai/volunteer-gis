@@ -8,11 +8,6 @@
         </div>
       </template>
 
-      <!-- 封面图 -->
-      <div class="cover-section" v-if="activity.coverImage">
-        <img :src="activity.coverImage" alt="活动封面" class="cover-img" />
-      </div>
-
       <el-descriptions :column="2" border>
         <el-descriptions-item label="活动地点">{{ activity.locationName }}</el-descriptions-item>
         <el-descriptions-item label="归属组织">{{ activity.organizationName || '未填写' }}</el-descriptions-item>

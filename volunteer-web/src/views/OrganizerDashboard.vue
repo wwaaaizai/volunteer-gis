@@ -47,6 +47,9 @@
           >
             发布
           </el-button>
+          <el-button size="small" @click="duplicateActivity(row)">
+            📋 复制
+          </el-button>
           <el-button size="small" type="warning"
             @click="$router.push(`/organizer/geofence/${row.id}`)">
             围栏
@@ -116,6 +119,36 @@ async function publishActivity(id: number) {
 /** 编辑活动 — 跳转到创建页（编辑模式） */
 function editActivity(id: number) {
   router.push({ path: '/organizer/create', query: { edit: id } })
+}
+
+/** 一键复制活动 — 复制为新草稿并跳转编辑 */
+async function duplicateActivity(row: any) {
+  try {
+    await ElMessageBox.confirm(`确认复制活动「${row.title}」为新草稿？`, '复制活动', {
+      confirmButtonText: '确认复制',
+      type: 'info',
+    })
+    // 创建新活动（复制原活动数据）
+    const payload = {
+      title: row.title + '（副本）',
+      description: row.description || '',
+      category: row.category || '',
+      tags: row.tags || '',
+      locationName: row.locationName || '',
+      longitude: row.longitude,
+      latitude: row.latitude,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      maxParticipants: row.maxParticipants,
+      coverImage: row.coverImage || '',
+      extraLocations: row.extraLocations || '',
+    }
+    await request.post('/activities', payload)
+    ElMessage.success('复制成功，跳转到编辑页')
+    loadActivities(activeTab.value)
+  } catch {
+    // 取消或出错
+  }
 }
 
 // 初始加载草稿列表
