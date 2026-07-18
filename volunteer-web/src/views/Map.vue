@@ -180,6 +180,13 @@
       <span>活动热力图</span>
     </div>
 
+    <!-- GIS分析按钮（置底，热力图上方） -->
+    <div class="gis-tool-btn" :class="{ 'gis-tool-btn--mobile': appStore.isMobile }"
+      @click="$router.push('/gis-analysis')">
+      <span class="ht-icon">&#x1f4ca;</span>
+      <span>GIS分析</span>
+    </div>
+
     <!-- 角色图例：学生/组织者高亮说明 -->
     <div v-if="showLegend" class="map-legend" :class="{ 'map-legend--mobile': appStore.isMobile }">
       <div class="legend-item">
@@ -1019,6 +1026,34 @@ onUnmounted(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   padding: 10px 12px;
   min-width: 180px;
+}
+
+/* ──── GIS分析按钮（热力图按钮下方，不重叠）─── */
+.gis-tool-btn {
+  position: absolute;
+  bottom: 76px;
+  right: 12px;
+  z-index: 10;
+  background: linear-gradient(135deg, #409eff, #66b1ff);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 24px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+  transition: transform 0.15s;
+}
+.gis-tool-btn:hover { transform: scale(1.05); }
+.gis-tool-btn--mobile {
+  bottom: 64px;
+  right: 8px;
+  padding: 6px 12px;
+  font-size: 11px;
 }
 /* 移动端：面板靠左、铺满宽度 */
 .heatmap-panel--mobile {
