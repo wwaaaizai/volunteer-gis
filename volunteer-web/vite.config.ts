@@ -21,11 +21,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': {
-          target: 'http://localhost:8081',
+          target: 'http://localhost:9090',
           changeOrigin: true,
         },
         '/uploads': {
-          target: 'http://localhost:8081',
+          target: 'http://localhost:9090',
           changeOrigin: true,
         },
         // P2-AM-03：GeoServer WMS/WFS 代理（避免浏览器 CORS 限制）

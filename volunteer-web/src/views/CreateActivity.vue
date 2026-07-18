@@ -122,28 +122,29 @@
         </el-form-item>
 
         <!-- 地图选点 -->
-        <el-form-item label="地图选点" prop="longitude">
+        <el-form-item label="地图选点" prop="longitude" class="map-picker-form-item">
           <MapPicker
             ref="mapPickerRef"
             :modelLng="isEdit ? form.longitude : undefined"
             :modelLat="isEdit ? form.latitude : undefined"
+            :mapHeight="340"
             @update="onMapPick"
           />
+          <!-- 分地点列表 -->
+          <div class="extra-locations" v-if="extraLocations.length > 0">
+            <div class="extra-loc-title">📌 分地点（共 {{ extraLocations.length }} 处）</div>
+            <div v-for="(loc, i) in extraLocations" :key="i" class="extra-loc-row">
+              <el-input v-model="loc.name" placeholder="地点名称" size="small" style="width:160px" />
+              <span class="extra-loc-coord">{{ loc.lng.toFixed(6) }}, {{ loc.lat.toFixed(6) }}</span>
+              <el-button size="small" type="danger" text @click="removeExtraLoc(i)">删除</el-button>
+            </div>
+          </div>
+          <div class="extra-loc-add" v-if="form.longitude && form.latitude">
+            <el-button size="small" @click="addExtraLoc">
+              + 添加分地点（如活动在多个位置开展）
+            </el-button>
+          </div>
         </el-form-item>
-
-        <!-- 经纬度 -->
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="经度" prop="longitude">
-              <el-input-number v-model="form.longitude" :precision="6" :step="0.001" style="width:100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="纬度" prop="latitude">
-              <el-input-number v-model="form.latitude" :precision="6" :step="0.001" style="width:100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
 
         <!-- 时间 -->
         <el-row :gutter="16">
@@ -433,6 +434,23 @@ function onMapPick(lng: number, lat: number) {
   form.latitude = lat
 }
 
+// ─── 多点选取 ───
+interface ExtraLocation { name: string; lng: number; lat: number }
+const extraLocations = ref<ExtraLocation[]>([])
+
+function addExtraLoc() {
+  if (!form.longitude || !form.latitude) return
+  extraLocations.value.push({
+    name: `分地点${extraLocations.value.length + 1}`,
+    lng: form.longitude,
+    lat: form.latitude,
+  })
+}
+
+function removeExtraLoc(i: number) {
+  extraLocations.value.splice(i, 1)
+}
+
 // ─── 标签 ───
 function showTagInput() {
   tagInputVisible.value = true
@@ -477,7 +495,10 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    const payload = { ...form, tags: form.tags.join(',') }
+    const payload: any = { ...form, tags: form.tags.join(',') }
+    if (extraLocations.value.length > 0) {
+      payload.extraLocations = JSON.stringify(extraLocations.value)
+    }
 
     if (isEdit.value) {
       await request.put(`/activities/${route.query.edit}`, payload)
@@ -512,9 +533,9 @@ function goBack() {
 
 <style scoped>
 .create-activity {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 20px auto;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 .template-bar {
   display: flex;
@@ -610,5 +631,38 @@ function goBack() {
   margin-top: 10px;
   border-radius: 4px;
   border: 1px solid #e4e7ed;
+}
+.map-picker-form-item :deep(.el-form-item__content) {
+  width: 100%;
+  flex-wrap: wrap;
+}
+.extra-locations {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+}
+.extra-loc-title {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.extra-loc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.extra-loc-coord {
+  font-size: 12px;
+  color: #909399;
+  font-family: monospace;
+}
+.extra-loc-add {
+  width: 100%;
+  margin-top: 6px;
 }
 </style>

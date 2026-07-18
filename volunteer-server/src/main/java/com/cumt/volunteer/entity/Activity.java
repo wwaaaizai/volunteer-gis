@@ -59,6 +59,9 @@ public class Activity {
     /** 策划案 JSON（15章节结构化数据） */
     private String proposal;
 
+    /** 分地点列表（JSON 数组：[{name,lng,lat}]） */
+    private String extraLocations;
+
     /** 已报名人数 */
     private Integer signedCount;
 

@@ -233,6 +233,7 @@ onUnmounted(() => {
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   overflow: hidden;
+  width: 100%;
 }
 .picker-hint {
   display: flex;
