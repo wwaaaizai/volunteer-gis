@@ -180,13 +180,6 @@
       <span>活动热力图</span>
     </div>
 
-    <!-- GIS分析按钮 -->
-    <div class="gis-tool-btn" :class="{ 'gis-tool-btn--mobile': appStore.isMobile }"
-      @click="$router.push('/gis-analysis')">
-      <span class="ht-icon">&#x1f4ca;</span>
-      <span>GIS分析</span>
-    </div>
-
     <!-- 角色图例：学生/组织者高亮说明 -->
     <div v-if="showLegend" class="map-legend" :class="{ 'map-legend--mobile': appStore.isMobile }">
       <div class="legend-item">
@@ -1014,36 +1007,6 @@ onUnmounted(() => {
 
 .ht-icon {
   font-size: 18px;
-}
-
-/* ──── GIS分析按钮 ──────────────────────────────── */
-.gis-tool-btn {
-  position: absolute;
-  bottom: 68px;
-  right: 12px;
-  z-index: 10;
-  background: linear-gradient(135deg, #409eff, #66b1ff);
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 24px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.4);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  user-select: none;
-  transition: transform 0.15s;
-}
-.gis-tool-btn:hover {
-  transform: scale(1.05);
-}
-.gis-tool-btn--mobile {
-  bottom: 58px;
-  right: 8px;
-  padding: 8px 14px;
-  font-size: 12px;
 }
 
 .heatmap-panel {
