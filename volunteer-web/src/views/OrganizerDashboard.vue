@@ -2,7 +2,7 @@
   <div class="organizer-dashboard">
     <div class="dashboard-header">
       <h2>组织者后台</h2>
-      <el-button type="primary" @click="$router.push('/organizer/create-activity')">
+      <el-button type="primary" @click="$router.push('/organizer/create')">
         + 创建活动
       </el-button>
     </div>
@@ -115,7 +115,7 @@ async function publishActivity(id: number) {
 
 /** 编辑活动 — 跳转到创建页（编辑模式） */
 function editActivity(id: number) {
-  router.push({ path: '/organizer/create-activity', query: { edit: id } })
+  router.push({ path: '/organizer/create', query: { edit: id } })
 }
 
 // 初始加载草稿列表
