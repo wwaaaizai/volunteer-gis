@@ -403,7 +403,7 @@ function selectAiCover(i: number) {
 
 // ─── 编辑模式 ───
 onMounted(async () => {
-  loadTemplates()
+  try { loadTemplates() } catch { /* templates optional */ }
   const editId = route.query.edit
   if (!editId) return
   try {
