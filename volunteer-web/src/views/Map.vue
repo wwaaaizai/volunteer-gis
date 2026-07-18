@@ -983,7 +983,7 @@ onUnmounted(() => {
 /* ──── 热力图 ──────────────────────────────────── */
 .heatmap-toggle {
   position: absolute;
-  bottom: 24px;
+  bottom: 72px;
   right: 12px;
   z-index: 10;
   background: linear-gradient(135deg, #ff6b35, #f7c948);
@@ -1005,7 +1005,7 @@ onUnmounted(() => {
 }
 /* 移动端：放大按钮保证触控面积 */
 .heatmap-toggle--mobile {
-  bottom: 12px;
+  bottom: 60px;
   right: 8px;
   padding: 12px 20px;
   font-size: 13px;
@@ -1031,7 +1031,7 @@ onUnmounted(() => {
 /* ──── GIS分析按钮（热力图按钮下方，不重叠）─── */
 .gis-tool-btn {
   position: absolute;
-  bottom: 200px;
+  bottom: 24px;
   right: 12px;
   z-index: 10;
   background: linear-gradient(135deg, #409eff, #66b1ff);
@@ -1050,7 +1050,7 @@ onUnmounted(() => {
 }
 .gis-tool-btn:hover { transform: scale(1.05); }
 .gis-tool-btn--mobile {
-  bottom: 210px;
+  bottom: 12px;
   right: 8px;
   padding: 6px 12px;
   font-size: 11px;
