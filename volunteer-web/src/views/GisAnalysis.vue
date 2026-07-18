@@ -55,11 +55,26 @@
         <BaseMap ref="coverageMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <div class="legend" style="margin-top:8px;display:flex;gap:12px;align-items:center">
           <span style="font-size:12px;color:#666">覆盖率:</span>
-          <span class="leg" style="background:#f0f0f0">空白</span>
-          <span class="leg" style="background:#c6dbef">≤1</span>
-          <span class="leg" style="background:#6baed6">2-3</span>
+          <span class="leg" style="background:#f0f0f0">盲区(0)</span>
+          <span class="leg" style="background:#c6dbef">1个</span>
+          <span class="leg" style="background:#6baed6">2-3个</span>
           <span class="leg" style="background:#2171b5">4+</span>
         </div>
+        <el-card v-if="coverageStats" style="margin-top:12px">
+          <template #header>覆盖统计
+            <el-button size="small" text style="float:right" @click="clearCoverage">清除</el-button>
+          </template>
+          <el-row :gutter="12">
+            <el-col :span="6"><el-statistic title="网格总数" :value="coverageStats.totalCells" /></el-col>
+            <el-col :span="6"><el-statistic title="盲区网格" :value="coverageStats.blindCells">
+              <template #suffix><span style="font-size:13px;color:#f56c6c">{{ coverageStats.blindPercent }}%</span></template>
+            </el-statistic></el-col>
+            <el-col :span="6"><el-statistic title="覆盖网格" :value="coverageStats.coveredCells" /></el-col>
+            <el-col :span="6"><el-statistic title="活动集中度" :value="coverageStats.maxInCell">
+              <template #suffix><span style="font-size:13px;color:#409eff">个/格</span></template>
+            </el-statistic></el-col>
+          </el-row>
+        </el-card>
       </el-tab-pane>
 
       <!-- ══════ 时段空间分布 ══════ -->
@@ -79,6 +94,17 @@
           </el-form-item>
         </el-form>
         <BaseMap ref="timelineMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
+        <el-card v-if="timelineStats" style="margin-top:12px">
+          <template #header>时段统计
+            <el-button size="small" text style="float:right" @click="clearTimeline">清除</el-button>
+          </template>
+          <el-row :gutter="12">
+            <el-col :span="6"><el-statistic title="活动总数" :value="timelineStats.total" /></el-col>
+            <el-col :span="6"><el-statistic title="分类数" :value="timelineStats.categoryCount" /></el-col>
+            <el-col :span="6"><el-statistic title="覆盖地点" :value="timelineStats.locationCount" /></el-col>
+            <el-col :span="6"><el-statistic title="总报名上限" :value="timelineStats.totalCapacity" /></el-col>
+          </el-row>
+        </el-card>
       </el-tab-pane>
 
       <!-- ══════ 集合点推荐 ══════ -->
@@ -100,13 +126,23 @@
         </el-form>
         <BaseMap ref="meetingMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
         <el-card v-if="meetingResult.length" style="margin-top: 12px">
-          <template #header>推荐集合点</template>
-          <div v-for="mp in meetingResult" :key="mp.index" class="meeting-item">
-            <el-tag>{{ mp.name }}</el-tag>
-            <span style="font-family:monospace;font-size:12px;margin-left:8px;color:#666">
-              GCJ-02: {{ mp.lng.toFixed(5) }}, {{ mp.lat.toFixed(5) }}
-            </span>
-          </div>
+          <template #header>推荐集合点
+            <el-button size="small" text style="float:right" @click="clearMeeting">清除</el-button>
+          </template>
+          <el-table :data="meetingResult" size="small" border>
+            <el-table-column prop="index" label="编号" width="60" />
+            <el-table-column prop="name" label="集合点" />
+            <el-table-column label="坐标(GCJ-02)" width="220">
+              <template #default="{ row }">
+                <span style="font-family:monospace;font-size:12px">
+                  {{ row.lng.toFixed(5) }}, {{ row.lat.toFixed(5) }}
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <p style="margin-top:8px;font-size:12px;color:#909399">
+            ⭐ 各集合点覆盖签到区域，建议选择坐标最近的作为集合点
+          </p>
         </el-card>
       </el-tab-pane>
 
@@ -177,10 +213,24 @@ function showBufferOnMap(lng: number, lat: number, radius: number) {
 // ── Coverage ──
 const coverageGrid = ref(8)
 const coverageMapRef = ref<InstanceType<typeof BaseMap>>()
+const coverageStats = ref<any>(null)
 
 async function runCoverage() {
   try {
     const data = await request.get('/map/coverage', { params: { gridSize: coverageGrid.value } }) as any
+    // 计算统计
+    const features = data?.features || []
+    let total = features.length, blind = 0, covered = 0, maxInCell = 0
+    features.forEach((f: any) => {
+      const c = f.properties?.count || 0
+      if (c === 0) blind++
+      else covered++
+      if (c > maxInCell) maxInCell = c
+    })
+    coverageStats.value = {
+      totalCells: total, blindCells: blind, coveredCells: covered,
+      maxInCell, blindPercent: total ? Math.round(blind / total * 100) : 0,
+    }
     await nextTick()
     showCoverageOnMap(data)
   } catch { /* */ }
@@ -207,12 +257,20 @@ function showCoverageOnMap(data: any) {
 // ── Timeline ──
 const timelineMonth = ref('')
 const timelineMapRef = ref<InstanceType<typeof BaseMap>>()
+const timelineStats = ref<any>(null)
 
 async function runTimeline() {
   try {
     const data = await request.get('/map/timeline', {
       params: timelineMonth.value ? { yearMonth: timelineMonth.value } : {}
     }) as any
+    const features = data?.features || []
+    const cats = new Set(features.map((f: any) => f.properties?.category).filter(Boolean))
+    const locs = new Set(features.map((f: any) => f.properties?.title).filter(Boolean))
+    timelineStats.value = {
+      total: features.length, categoryCount: cats.size,
+      locationCount: locs.size, totalCapacity: '—',
+    }
     await nextTick()
     showTimelineOnMap(data)
   } catch { /* */ }
@@ -277,11 +335,13 @@ function clearBuffer() {
   try { if (map?.getSource('buffer-circle')) map.removeSource('buffer-circle') } catch { /* */ }
 }
 function clearCoverage() {
+  coverageStats.value = null
   const map = coverageMapRef.value?.map
   try { if (map?.getLayer('coverage-fill')) map.removeLayer('coverage-fill') } catch { /* */ }
   try { if (map?.getSource('coverage-grid')) map.removeSource('coverage-grid') } catch { /* */ }
 }
 function clearTimeline() {
+  timelineStats.value = null
   const map = timelineMapRef.value?.map
   try { if (map?.getLayer('timeline-circles')) map.removeLayer('timeline-circles') } catch { /* */ }
   try { if (map?.getSource('timeline-points')) map.removeSource('timeline-points') } catch { /* */ }
