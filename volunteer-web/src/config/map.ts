@@ -114,7 +114,7 @@ export function buildTiandituStyle(key: string = TIANDITU_KEY): StyleSpecificati
 export const GEOSERVER_BASE = '/geoserver'
 
 /** GeoServer 工作区名称 */
-export const GEOSERVER_WORKSPACE = 'ol_campus'
+export const GEOSERVER_WORKSPACE = 'CUMT'
 
 /**
  * 可用图层清单（与 GeoServer 实际发布的图层对应）。
@@ -149,34 +149,21 @@ export interface GeoServerLayerMeta {
 
 export const GEOSERVER_LAYERS: GeoServerLayerMeta[] = [
   {
-    name: 'ol_campus:jianzhu',
+    name: 'CUMT:jianzhu',
     title: '校园建筑',
     geometryType: 'polygon',
     visible: true,
     color: '#f59e0b',
     strokeColor: '#d97706',
-    translate: [-0.00580, 0.00112],
   },
   {
-    name: 'ol_campus:bianjie',
-    title: '校区边界',
-    geometryType: 'polygon',
-    visible: true,
-    strokeColor: '#1d4ed8',
-    fill: false,
-    translate: [-0.00563, 0.00110],
-  },
-
- {
-    name: 'ol_campus:yundongchang',
+    name: 'CUMT:yundongchang',
     title: '校园运动场',
     geometryType: 'polygon',
     visible: true,
     color: '#ef6306',
     strokeColor: '#ef6306',
-    translate: [-0.00580, 0.00112],
   },
-  	
 ]
 
 /**
