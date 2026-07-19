@@ -1,25 +1,34 @@
 <template>
   <div class="profile-page">
-    <h2>个人信息管理</h2>
+    <h2>组织信息</h2>
     <el-card>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px" v-loading="loading">
-        <el-form-item label="学号">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="110px" v-loading="loading">
+        <el-form-item label="组织账号">
           <el-input :model-value="userInfo?.studentId" disabled />
+          <span class="form-tip">登录使用的账号，不可修改</span>
         </el-form-item>
         <el-form-item label="角色">
-          <el-tag>{{ userInfo?.role === 'organizer' ? '活动组织者' : userInfo?.role === 'admin' ? '管理员' : '学生' }}</el-tag>
+          <el-tag>{{ roleLabel }}</el-tag>
         </el-form-item>
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="form.name" />
+        <el-form-item label="组织名称" prop="name">
+          <el-input v-model="form.name" placeholder="如：环测学院青年志愿者协会" />
+          <span class="form-tip">显示在活动页面的归属组织处</span>
         </el-form-item>
-        <el-form-item label="手机号" prop="phone">
-          <el-input v-model="form.phone" />
+        <el-form-item label="负责人" prop="contactPerson">
+          <el-input v-model="form.contactPerson" placeholder="如：张三" />
         </el-form-item>
-        <el-form-item label="所属机构" prop="organization" v-if="userInfo?.role !== 'student'">
-          <el-input v-model="form.organization" placeholder="如：校团委" />
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="form.phone" placeholder="如：138xxxx" />
         </el-form-item>
-        <el-form-item label="累计志愿时长">
-          <span>{{ userInfo?.totalHours ?? 0 }} 小时</span>
+        <el-form-item label="所属单位" prop="organization">
+          <el-input v-model="form.organization" placeholder="如：环境与测绘学院团委" />
+        </el-form-item>
+        <el-form-item label="工号" v-if="userInfo?.role !== 'student'">
+          <el-input v-model="form.employeeId" placeholder="组织者工号（选填）" />
+        </el-form-item>
+        <el-form-item label="负责区域">
+          <el-input v-model="form.responsibleArea" placeholder="如：南湖校区博学楼区域、图书馆" type="textarea" :rows="2" />
+          <span class="form-tip">描述贵组织主要负责的校园区域或活动范围</span>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
@@ -31,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import request from '@/api'
@@ -42,15 +51,25 @@ const formRef = ref()
 const loading = ref(true)
 const saving = ref(false)
 
+const roleLabel = computed(() => {
+  const map: Record<string, string> = {
+    organizer: '活动组织者', admin: '管理员', student: '学生',
+  }
+  return map[userInfo.value?.role] || userInfo.value?.role || ''
+})
+
 const form = reactive({
   name: '',
+  contactPerson: '',
   phone: '',
   organization: '',
+  employeeId: '',
+  responsibleArea: '',
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入组织名称', trigger: 'blur' }],
+  phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
 }
 
 onMounted(async () => {
@@ -59,8 +78,10 @@ onMounted(async () => {
     form.name = userInfo.value.name || ''
     form.phone = userInfo.value.phone || ''
     form.organization = userInfo.value.organization || ''
+    form.employeeId = userInfo.value.employeeId || ''
+    form.responsibleArea = userInfo.value.responsibleArea || ''
   } catch {
-    ElMessage.error('加载用户信息失败')
+    ElMessage.error('加载组织信息失败')
   } finally {
     loading.value = false
   }
@@ -75,7 +96,7 @@ async function handleSave() {
     ElMessage.success('保存成功')
     await userStore.fetchUser()
   } catch {
-    // 错误已在拦截器中提示
+    // error handled by interceptor
   } finally {
     saving.value = false
   }
@@ -84,8 +105,14 @@ async function handleSave() {
 
 <style scoped>
 .profile-page {
-  max-width: 600px;
+  max-width: 640px;
   margin: 20px auto;
   padding: 0 16px;
+}
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  display: block;
+  margin-top: 2px;
 }
 </style>
