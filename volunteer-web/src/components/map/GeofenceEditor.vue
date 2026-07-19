@@ -109,7 +109,6 @@ function finishDrawing() {
 // ── Draw ──
 function redrawAll() {
   const map = props.map; if (!map) return
-  removeDrawLayers()
 
   const allFeatures: any[] = []
   polygons.value.forEach((p, pi) => {
@@ -125,7 +124,6 @@ function redrawAll() {
         properties: { polygonIndex: pi, type: 'fill' },
       })
     }
-    // Vertex points
     p.vertices.forEach((v, vi) => {
       allFeatures.push({
         type: 'Feature', geometry: { type: 'Point', coordinates: v },
@@ -135,30 +133,62 @@ function redrawAll() {
   })
 
   const geojson: any = { type: 'FeatureCollection', features: allFeatures }
-  map.addSource(SOURCE_ID, { type: 'geojson', data: geojson })
 
-  // Lines per polygon
+  // Update source if exists, create if not (avoids remove+re-add flicker)
+  if (map.getSource(SOURCE_ID)) {
+    ;(map.getSource(SOURCE_ID) as GeoJSONSource).setData(geojson)
+  } else {
+    map.addSource(SOURCE_ID, { type: 'geojson', data: geojson })
+  }
+
+  // Ensure layers exist (create once, don't remove)
   polygons.value.forEach((p, i) => {
     if (p.vertices.length === 0) return
     const color = i === currentPolygon.value ? '#ff6600' : '#b0b0b0'
-    map.addLayer({
-      id: LINE_PREFIX + i, type: 'line', source: SOURCE_ID,
-      paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': [4, 2] },
-      filter: ['all', ['==', '$type', 'LineString'], ['==', ['get', 'polygonIndex'], i]],
-    })
-    map.addLayer({
-      id: VERTEX_PREFIX + i, type: 'circle', source: SOURCE_ID,
-      paint: { 'circle-radius': 5, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
-      filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'polygonIndex'], i]],
-    })
-    if (p.finished) {
+    const lid = LINE_PREFIX + i
+    if (!map.getLayer(lid)) {
       map.addLayer({
-        id: FILL_PREFIX + i, type: 'fill', source: SOURCE_ID,
-        paint: { 'fill-color': color, 'fill-opacity': 0.12 },
-        filter: ['all', ['==', '$type', 'Polygon'], ['==', ['get', 'polygonIndex'], i]],
+        id: lid, type: 'line', source: SOURCE_ID,
+        paint: { 'line-color': color, 'line-width': 3, 'line-dasharray': p.finished ? [] : [4, 2] },
+        filter: ['all', ['==', '$type', 'LineString'], ['==', ['get', 'polygonIndex'], i]],
       })
+    } else {
+      map.setPaintProperty(lid, 'line-color', color)
+      map.setPaintProperty(lid, 'line-dasharray', p.finished ? [] : [4, 2])
+    }
+    const vid = VERTEX_PREFIX + i
+    if (!map.getLayer(vid)) {
+      map.addLayer({
+        id: vid, type: 'circle', source: SOURCE_ID,
+        paint: { 'circle-radius': 6, 'circle-color': color, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' },
+        filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'polygonIndex'], i]],
+      })
+    } else {
+      map.setPaintProperty(vid, 'circle-color', color)
+    }
+    const fid = FILL_PREFIX + i
+    if (p.finished) {
+      if (!map.getLayer(fid)) {
+        map.addLayer({
+          id: fid, type: 'fill', source: SOURCE_ID,
+          paint: { 'fill-color': color, 'fill-opacity': 0.15 },
+          filter: ['all', ['==', '$type', 'Polygon'], ['==', ['get', 'polygonIndex'], i]],
+        })
+      } else {
+        map.setPaintProperty(fid, 'fill-color', color)
+      }
+    } else {
+      try { if (map.getLayer(fid)) map.removeLayer(fid) } catch {/* */}
     }
   })
+
+  // Remove layers for deleted polygons
+  const total = Math.max(polygons.value.length + 2, 12)
+  for (let i = polygons.value.length; i < total; i++) {
+    try { if (map.getLayer(FILL_PREFIX + i)) map.removeLayer(FILL_PREFIX + i) } catch {/* */}
+    try { if (map.getLayer(VERTEX_PREFIX + i)) map.removeLayer(VERTEX_PREFIX + i) } catch {/* */}
+    try { if (map.getLayer(LINE_PREFIX + i)) map.removeLayer(LINE_PREFIX + i) } catch {/* */}
+  }
 }
 
 function removeDrawLayers() {
