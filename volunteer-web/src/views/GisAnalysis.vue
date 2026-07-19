@@ -77,6 +77,35 @@
         </el-card>
       </el-tab-pane>
 
+      <!-- ══════ 时段空间分布 ══════ -->
+      <el-tab-pane label="时段空间分布" name="timeline">
+        <p class="desc">按月份查看活动空间分布变化，支持时间轴联动</p>
+        <el-form :inline="true" size="small">
+          <el-form-item label="选择月份">
+            <el-select v-model="timelineMonth" @change="runTimeline" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="2026-06" value="2026-06" />
+              <el-option label="2026-07" value="2026-07" />
+              <el-option label="2026-09" value="2026-09" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="clearTimeline">取消</el-button>
+          </el-form-item>
+        </el-form>
+        <BaseMap ref="timelineMapRef" style="height: 500px; border-radius: 6px; margin-top: 8px" />
+        <el-card v-if="timelineStats" style="margin-top:12px">
+          <template #header>时段统计
+            <el-button size="small" text style="float:right" @click="clearTimeline">清除</el-button>
+          </template>
+          <el-row :gutter="12">
+            <el-col :span="6"><el-statistic title="活动总数" :value="timelineStats.total" /></el-col>
+            <el-col :span="6"><el-statistic title="分类数" :value="timelineStats.categoryCount" /></el-col>
+            <el-col :span="6"><el-statistic title="覆盖地点" :value="timelineStats.locationCount" /></el-col>
+            <el-col :span="6"><el-statistic title="总报名上限" :value="timelineStats.totalCapacity" /></el-col>
+          </el-row>
+        </el-card>
+      </el-tab-pane>
 
       <!-- ══════ 集合点推荐 ══════ -->
       <el-tab-pane label="集合点推荐" name="meeting">
@@ -176,6 +205,39 @@ function showBufferOnMap(lng: number, lat: number, radius: number) {
     data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [points] }, properties: {} },
   })
   map.addLayer({ id: lid, type: 'fill', source: sid,
+    paint: { 'fill-color': '#409eff', 'fill-opacity': 0.15 } })
+  map.addLayer({ id: lid + '-line', type: 'line', source: sid,
+    paint: { 'line-color': '#409eff', 'line-width': 2 } })
+}
+
+// ── Coverage ──
+const coverageGrid = ref(8)
+const coverageMapRef = ref<InstanceType<typeof BaseMap>>()
+const coverageStats = ref<any>(null)
+
+async function runCoverage() {
+  try {
+    const data = await request.get('/map/coverage', { params: { gridSize: coverageGrid.value } }) as any
+    // 计算统计
+    const features = data?.features || []
+    let total = features.length, blind = 0, covered = 0, maxInCell = 0
+    features.forEach((f: any) => {
+      const c = f.properties?.count || 0
+      if (c === 0) blind++
+      else covered++
+      if (c > maxInCell) maxInCell = c
+    })
+    coverageStats.value = {
+      totalCells: total, blindCells: blind, coveredCells: covered,
+      maxInCell, blindPercent: total ? Math.round(blind / total * 100) : 0,
+    }
+    await nextTick()
+    showCoverageOnMap(data)
+  } catch { /* */ }
+}
+
+function showCoverageOnMap(data: any) {
+  const map = coverageMapRef.value?.map; if (!map) return
   const sid = 'coverage-grid'; const lid = 'coverage-fill'
   try { if (map.getLayer(lid)) map.removeLayer(lid) } catch { /* */ }
   try { if (map.getSource(sid)) map.removeSource(sid) } catch { /* */ }

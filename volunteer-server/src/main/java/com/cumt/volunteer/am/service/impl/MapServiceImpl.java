@@ -146,6 +146,34 @@ public class MapServiceImpl implements MapService {
         fc.put("type", "FeatureCollection"); fc.put("features", features);
         return fc;
     }
+
+    @Override
+    public FeatureCollection timelineAnalysis(String yearMonth) {
+        List<Activity> activities;
+        if (yearMonth != null && !yearMonth.isBlank()) {
+            String prefix = yearMonth + "-";
+            activities = activityMapper.selectList(new LambdaQueryWrapper<Activity>()
+                    .eq(Activity::getStatus, "published")
+                    .and(w -> w.likeRight(Activity::getStartTime, prefix)
+                             .or().likeRight(Activity::getCreatedAt, prefix)));
+        } else {
+            activities = activityMapper.selectList(
+                    new LambdaQueryWrapper<Activity>().eq(Activity::getStatus, "published"));
+        }
+        List<Feature> features = new ArrayList<>();
+        for (Activity a : activities) {
+            if (a.getLongitude() == null || a.getLatitude() == null) continue;
+            double[] gcj = coordConvertService.wgs84ToGcj02(
+                    a.getLongitude().doubleValue(), a.getLatitude().doubleValue());
+            Map<String, Object> props = geoJsonBuilder.props();
+            props.put("id", a.getId()); props.put("title", a.getTitle());
+            props.put("category", a.getCategory() != null ? a.getCategory() : "");
+            props.put("startTime", a.getStartTime() != null ? a.getStartTime().toString() : null);
+            features.add(geoJsonBuilder.pointFeature(GeoPoint.of(gcj[0], gcj[1]), props));
+        }
+        return geoJsonBuilder.collection(features);
+    }
+
     @Override
     public List<Map<String, Object>> clusterMeeting(Long activityId, int k) {
         List<Signup> signups = signupMapper.selectList(new LambdaQueryWrapper<Signup>()

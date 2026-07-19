@@ -151,6 +151,15 @@ public class MapController {
         return Result.ok(mapService.coverageAnalysis(gridSize));
     }
 
+    // ──── 时段空间分布 ───────────────────────────────
+
+    /** 时段空间分布：按月份返回活动分布 */
+    @GetMapping("/timeline")
+    public Result<FeatureCollection> timelineAnalysis(
+            @RequestParam(required = false) String yearMonth) {
+        return Result.ok(mapService.timelineAnalysis(yearMonth));
+    }
+
     // ──── 集合点推荐 ─────────────────────────────────
 
     /** 集合点推荐：对活动报名学生签到坐标聚类，推荐最优集合点 */
