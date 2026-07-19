@@ -32,7 +32,9 @@ export const mapHandlers = [
           id: a.id,
           title: a.title,
           locationName: a.locationName,
+          category: a.category || 'campus',
           startTime: a.startTime,
+          endTime: a.endTime,
         },
       }
     })

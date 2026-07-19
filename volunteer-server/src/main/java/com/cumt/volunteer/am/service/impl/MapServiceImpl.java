@@ -40,7 +40,11 @@ public class MapServiceImpl implements MapService {
             properties.put("id", a.getId());
             properties.put("title", a.getTitle());
             properties.put("locationName", a.getLocationName());
+            properties.put("category", a.getCategory());
             properties.put("startTime", a.getStartTime() != null ? a.getStartTime().toString() : null);
+            properties.put("endTime", a.getEndTime() != null ? a.getEndTime().toString() : null);
+
+            // WGS-84 → GCJ-02 坐标转换（对齐天地图底图）
             double[] gcj = coordConvertService.wgs84ToGcj02(
                     a.getLongitude().doubleValue(), a.getLatitude().doubleValue());
             features.add(geoJsonBuilder.pointFeature(GeoPoint.of(gcj[0], gcj[1]), properties));

@@ -18,7 +18,9 @@ export interface ActivityProperties {
   id: number
   title: string
   locationName: string
+  category: string
   startTime: string | null
+  endTime: string | null
 }
 
 /** GeoJSON Feature（活动点要素） */

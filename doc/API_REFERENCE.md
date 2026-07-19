@@ -109,7 +109,9 @@
         "id": 1,
         "title": "图书馆整理",
         "locationName": "图书馆一楼",
-        "startTime": "2026-06-20T09:00:00"
+        "category": "campus",
+        "startTime": "2026-06-20T09:00:00",
+        "endTime": "2026-06-20T12:00:00"
       }
     }
   ]

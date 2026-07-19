@@ -41,7 +41,7 @@ router/index.ts → createWebHistory()
 | /admin/create-activity | CreateActivity.vue | roles: ['admin', 'organizer'] | 创建活动表单 |
 | /admin/geofence/:id | GeofenceEdit.vue | roles: ['admin', 'organizer'] | 签到围栏编辑 |
 | /organizer | OrganizerDashboard.vue | roles: ['organizer', 'admin'] | 组织者仪表盘（我的活动） |
-| /organizer/create | CreateActivity.vue | roles: ['organizer', 'admin'] | 创建活动（地图选点） |
+| /organizer/create-activity | CreateActivity.vue | roles: ['organizer', 'admin'] | 创建活动（地图选点） |
 | /organizer/activity/:id | OrganizerActivityDetail.vue | roles: ['organizer', 'admin'] | 活动详情（含报名名单+签到统计） |
 | /organizer/geofence/:id | GeofenceEdit.vue | roles: ['organizer', 'admin'] | 签到围栏编辑 |
 | /organizer/profile | OrganizerProfile.vue | roles: ['organizer', 'admin'] | 组织者个人信息 |
@@ -84,7 +84,14 @@ App.vue
         │   ├── 底图切换按钮: 图标按钮（卫星/标准），位于定位控件下方
         │   ├── 建筑开关按钮: 图标按钮，默认关闭，点击后显示建筑+运动场面
         │   ├── 建筑弹窗: 点击建筑面 → 蓝色高亮轮廓 + 名称弹窗（P2-AM-08）
-        │   └── 热力图面板: GET /api/map/heatmap → heatmap layer (分类/时间筛选)
+        │   ├── 热力图面板: GET /api/map/heatmap → heatmap layer (分类/时间筛选)
+        │   └── 底部上拉背板 (activity-drawer): 五级状态（collapsed/quarter/half/peek/expanded）
+        │       ├── collapsed: 搜索框 + 拖拽手柄
+        │       ├── quarter: 活动分类筛选按钮（全部/环保/助学/支教/社区/校园/其他）
+        │       ├── half: 分类筛选 + 闲时活动开关（仅学生端，联动课表空闲时段）
+        │       ├── peek: 活动详情半展开（标题/地点/时间/人数/描述）+ 建筑信息
+        │       └── expanded: 完整活动详情（可滚动）+ 报名按钮
+        │   └── 拖拽手势: Pointer Events 实现，上拉逐级展开（collapsed→quarter→half），下拉逐级收起
         ├── ActivityDetail.vue  详情页
         │   ├── el-descriptions (地点/人数/时间/分类/标签)
         │   ├── el-button → POST /api/signups
@@ -279,6 +286,34 @@ ActivityLayer.vue
   → map.addSource('activities', { type: 'geojson', data })
   → map.addLayer('activity-markers', { type: 'circle', paint })
   → map.on('click', 'activity-markers') → router.push(`/activity/${id}`)
+```
+
+### 底部上拉背板（五级状态）
+```
+Map.vue activity-drawer
+  → collapsed（translateY(calc(100% - 56px))）: 拖拽手柄 + 搜索框
+  → 上拉 > 40px → quarter（translateY(60%) / 约 1/4 屏）
+    → 分类筛选按钮组（全部/环保/助学/支教/社区/校园/其他）
+    → 点击分类 → applyCombinedFilter() → filter GeoJSON by category → src.setData()
+  → 上拉 > 100px → half（translateY(35%) / 约 1/2 屏）
+    → 分类筛选 + 闲时活动开关（仅学生端显示）
+    → 闲时开关 on: 检查 courseStore.hasImported
+      → 未导入 → ElMessageBox → 跳转 /course-schedule
+      → 已导入 → isActivityInFreeSlot() 比较活动时间与空闲时段
+  → 点击活动标记 → peek（translateY(25%)）: 活动详情半展开
+  → "查看更多" → expanded（translateY(10%））: 完整活动详情可滚动
+  → 下拉逐级收起: expanded→peek→half→quarter→collapsed
+  → 点击地图空白 → 收起至 collapsed + 清除筛选
+拖拽手势: Pointer Events（pointerdown/pointerup on drag-handle）
+```
+
+### 组合筛选（分类 + 闲时 + 搜索）
+```
+分类筛选: GeoJSON properties.category 字段
+闲时筛选: activity startTime/endTime vs courseStore.freeSlots (大节空隙)
+组合逻辑: AND — 分类筛选后叠加闲时筛选
+搜索: 仅在 collapsed 模式下可用，按 title 模糊匹配 geojsonOriginal
+搜索与分类/闲时互斥 — 切换 drawer 模式时自动恢复
 ```
 
 ### 热力图
