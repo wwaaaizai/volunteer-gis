@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "markdown-to-docx": "^1.2.0"
+  }
+}

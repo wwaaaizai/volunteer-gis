@@ -4,6 +4,9 @@ import com.cumt.volunteer.geo.model.GeoPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 空间距离计算工具（Haversine 公式）。
  *
@@ -153,26 +156,73 @@ public class SpatialCalculator {
     }
 
     /**
-     * 从 GeoJSON Polygon JSON 字符串解析多边形顶点。
-     * 格式：{"type":"Polygon","coordinates":[[[lng,lat],...]]}
+     * 判断点是否在多个多边形集合的任意一个内（支持多围栏/多会场签到）。
      */
-    public double[][] parsePolygonFromGeoJson(String geoJson) {
+    public boolean isPointInAnyPolygon(double lng, double lat, List<double[][]> polygons) {
+        if (polygons == null || polygons.isEmpty()) return false;
+        for (double[][] polygon : polygons) {
+            if (isPointInPolygon(lng, lat, polygon)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * 从 GeoJSON MultiPolygon 或 Polygon 字符串解析所有多边形顶点。
+     * 支持: Polygon → [[[lng,lat],...]] 或 MultiPolygon → [[[[lng,lat],...]],[[[...]]]]
+     */
+    public List<double[][]> parsePolygonFromGeoJson(String geoJson) {
         if (geoJson == null || geoJson.isBlank()) return null;
         try {
-            // 简单解析：提取最内层 [[...]] 中的坐标对
-            String content = geoJson.replaceAll(".*?\\[\\[\\[", "")
-                                     .replaceAll("\\]\\]\\].*", "");
-            String[] pairs = content.split("\\],\\[");
+            // 判断是 MultiPolygon 还是 Polygon
+            if (geoJson.contains("\"MultiPolygon\"")) {
+                return parseMultiPolygon(geoJson);
+            } else {
+                // Polygon 格式 → 返回单元素列表
+                double[][] poly = parseSinglePolygon(geoJson);
+                if (poly == null) return null;
+                List<double[][]> list = new ArrayList<>();
+                list.add(poly);
+                return list;
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 解析单个 Polygon */
+    private double[][] parseSinglePolygon(String geoJson) {
+        String content = geoJson.replaceAll(".*?\\[\\[\\[", "")
+                                 .replaceAll("\\]\\]\\].*", "");
+        String[] pairs = content.split("\\],\\[");
+        double[][] polygon = new double[pairs.length][2];
+        for (int i = 0; i < pairs.length; i++) {
+            String[] xy = pairs[i].trim().split(",");
+            polygon[i][0] = Double.parseDouble(xy[0].trim());
+            polygon[i][1] = Double.parseDouble(xy[1].trim());
+        }
+        return polygon;
+    }
+
+    /** 解析 MultiPolygon → 多个 Polygon 数组的列表 */
+    private List<double[][]> parseMultiPolygon(String geoJson) {
+        List<double[][]> polygons = new ArrayList<>();
+        // MultiPolygon: [[[[...]]],[[[...]]]]
+        // Remove outer wrapper and split by "]],[["
+        String inner = geoJson.replaceAll(".*?\\[\\[\\[\\[", "")
+                               .replaceAll("\\]\\]\\]\\].*", "");
+        String[] polyBlocks = inner.split("\\]\\],\\[\\[");
+        for (String block : polyBlocks) {
+            // Each block is like lng1,lat1],[lng2,lat2
+            String[] pairs = block.split("\\],\\[");
             double[][] polygon = new double[pairs.length][2];
             for (int i = 0; i < pairs.length; i++) {
                 String[] xy = pairs[i].trim().split(",");
                 polygon[i][0] = Double.parseDouble(xy[0].trim());
                 polygon[i][1] = Double.parseDouble(xy[1].trim());
             }
-            return polygon;
-        } catch (Exception e) {
-            return null;
+            if (polygon.length >= 3) polygons.add(polygon);
         }
+        return polygons.isEmpty() ? null : polygons;
     }
 
     // ──── Haversine 核心实现 ──────────────────────────

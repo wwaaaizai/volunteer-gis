@@ -41,11 +41,13 @@ public class CheckInServiceImpl implements CheckInService {
         // 验证签到位置
         Activity activity = activityMapper.selectById(activityId);
 
-        // 优先使用地理围栏校验；无围栏则兜底500m圆形校验
+        // 优先使用地理围栏（支持多会场）校验；无围栏则兜底500m圆形校验
         if (activity.getCheckinRegion() != null && !activity.getCheckinRegion().isBlank()) {
-            double[][] polygon = spatialCalculator.parsePolygonFromGeoJson(activity.getCheckinRegion());
-            if (polygon != null && !spatialCalculator.isPointInPolygon(
-                    lng.doubleValue(), lat.doubleValue(), polygon)) {
+            java.util.List<double[][]> polygons = spatialCalculator.parsePolygonFromGeoJson(
+                    activity.getCheckinRegion());
+            if (polygons != null && !polygons.isEmpty()
+                    && !spatialCalculator.isPointInAnyPolygon(
+                        lng.doubleValue(), lat.doubleValue(), polygons)) {
                 throw new RuntimeException("您不在签到区域内，请到达活动指定区域后签到");
             }
         } else {
