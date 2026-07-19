@@ -20,9 +20,6 @@ public interface MapService {
     /** 覆盖率分析 */
     java.util.Map<String, Object> coverageAnalysis(int gridSize);
 
-    /** 时段空间分布 */
-    FeatureCollection timelineAnalysis(String yearMonth);
-
     /** 集合点推荐 */
     java.util.List<java.util.Map<String, Object>> clusterMeeting(Long activityId, int k);
 
