@@ -65,6 +65,8 @@
     <div
       class="activity-drawer"
       :class="{
+        'activity-drawer--quarter': drawerMode === 'quarter',
+        'activity-drawer--half': drawerMode === 'half',
         'activity-drawer--peek': drawerMode === 'peek',
         'activity-drawer--expanded': drawerMode === 'expanded',
         'activity-drawer--mobile': appStore.isMobile,
@@ -77,7 +79,7 @@
 
       <!-- 收起态：搜索框 -->
       <div class="drawer-body" :class="{ 'drawer-body--scrollable': drawerMode !== 'collapsed' }"
-        v-if="drawerMode === 'collapsed' || drawerContent.type === 'search'">
+        v-if="drawerMode === 'collapsed'">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索活动..."
@@ -92,6 +94,42 @@
             </svg>
           </template>
         </el-input>
+      </div>
+
+      <!-- 分类筛选 + 闲时活动（quarter / half 模式） -->
+      <div class="drawer-body" v-if="drawerMode === 'quarter' || drawerMode === 'half'">
+        <div class="category-filters">
+          <div class="category-chip" :class="{ active: !activeCategory }" @click="setCategory('')">
+            全部
+          </div>
+          <div
+            class="category-chip"
+            v-for="(label, key) in categoryMap" :key="key"
+            :class="{ active: activeCategory === key }"
+            @click="setCategory(key)"
+          >
+            {{ label }}
+          </div>
+        </div>
+        <div class="filter-hint">
+          <span v-if="activeCategory">已筛选 {{ filteredCount }} / {{ totalCount }} 个活动</span>
+          <span v-else>共 {{ totalCount }} 个活动</span>
+          <span v-if="freeTimeOnly && courseStore.hasImported" class="filter-week-info">
+            | {{ weekInfoLabel }}，{{ freeSlotCount }} 个空闲时段
+          </span>
+        </div>
+        <!-- 闲时活动开关（仅 half 模式 + 学生端） -->
+        <div
+          v-if="drawerMode === 'half' && userStore.user?.role === 'student'"
+          class="free-time-toggle"
+        >
+          <div class="free-time-label">
+            <span class="free-time-title">闲时活动</span>
+            <span class="free-time-desc" v-if="courseStore.hasImported && weekInfoLabel">{{ weekInfoLabel }}</span>
+            <span class="free-time-desc" v-else>仅显示空闲时段可参加的活动</span>
+          </div>
+          <el-switch v-model="freeTimeOnly" @change="handleFreeTimeToggle" />
+        </div>
       </div>
 
       <!-- 活动详情（peek / expanded） -->
@@ -196,7 +234,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Map, GeoJSONSource } from 'maplibre-gl'
 import BaseMap from '@/components/map/BaseMap.vue'
 import ActivityLayer from '@/components/map/ActivityLayer.vue'
@@ -205,11 +243,14 @@ import { GEOSERVER_LAYERS, type GeoServerLayerMeta, type BaseMapMode } from '@/c
 import request from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
+import { useCourseStore } from '@/stores/course'
+import { formatDateISO } from '@/utils/icsParser'
 import type { FeatureCollection } from '@/types/geo'
 
 const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
+const courseStore = useCourseStore()
 
 // ──── 图例 ──────────────────────────────────────
 
@@ -233,7 +274,7 @@ const geojsonOriginal = ref<FeatureCollection | null>(null)
 
 // ──── 底部上拉背板状态 ────────────────────────────
 
-type DrawerMode = 'collapsed' | 'peek' | 'expanded'
+type DrawerMode = 'collapsed' | 'quarter' | 'half' | 'peek' | 'expanded'
 
 type DrawerContent =
   | { type: 'search' }
@@ -244,6 +285,168 @@ const drawerMode = ref<DrawerMode>('collapsed')
 const drawerContent = ref<DrawerContent>({ type: 'search' })
 const searchKeyword = ref('')
 const signing = ref(false)
+
+// ──── 分类筛选 ──────────────────────────────
+
+const categoryMap: Record<string, string> = {
+  environmental: '环保',
+  support: '助学',
+  education: '支教',
+  community: '社区',
+  campus: '校园',
+  other: '其他',
+}
+
+const activeCategory = ref('')
+const freeTimeOnly = ref(false)
+
+/** 当前地图上显示的活动数量（过滤后） */
+const filteredCount = computed(() => geojson.value?.features.length ?? 0)
+
+/** 原始活动总数 */
+const totalCount = computed(() => geojsonOriginal.value?.features.length ?? 0)
+
+/** 当前周信息标签（用于闲时筛选显示） */
+const weekInfoLabel = computed(() => {
+  if (!courseStore.hasImported || !courseStore.weekStartDate) return ''
+  const days = courseStore.weekDays
+  if (days.length === 0) return ''
+  return `第 ${courseStore.weekNumber} 周 (${days[0].shortDate} - ${days[6].shortDate})`
+})
+
+/** 空闲时段数量（当前周） */
+const freeSlotCount = computed(() => courseStore.freeSlots.length)
+
+/** 切换分类筛选 */
+function setCategory(key: string) {
+  activeCategory.value = activeCategory.value === key ? '' : key
+  applyCombinedFilter()
+}
+
+/** 组合筛选：分类 + 闲时 */
+function applyCombinedFilter() {
+  if (!geojsonOriginal.value) {
+    console.warn('[applyCombinedFilter] geojsonOriginal 为空，无法筛选')
+    return
+  }
+
+  if (geojsonOriginal.value.features.length > 0) {
+    const firstProps = geojsonOriginal.value.features[0].properties
+    console.log('[applyCombinedFilter] 样例属性:', firstProps, 'activeCategory:', activeCategory.value)
+  }
+
+  const map = mapInstance.value
+  if (!map) {
+    console.warn('[applyCombinedFilter] mapInstance 为空，仅更新 geojson')
+    geojson.value = buildFiltered()
+    return
+  }
+
+  const src = map.getSource('activities') as GeoJSONSource | undefined
+  if (!src) {
+    console.warn('[applyCombinedFilter] 找不到 activities source，仅更新 geojson')
+    geojson.value = buildFiltered()
+    return
+  }
+
+  const filtered = buildFiltered()
+  geojson.value = filtered
+  src.setData(filtered as any)
+  console.log('[applyCombinedFilter] 已应用筛选，过滤后:', filtered.features.length, '项')
+}
+
+/** 构建筛选后的 GeoJSON（不更新地图 source） */
+function buildFiltered(): FeatureCollection {
+  const original = geojsonOriginal.value!
+  let features = [...original.features]
+
+  if (activeCategory.value) {
+    features = features.filter(f => f.properties.category === activeCategory.value)
+  }
+
+  if (freeTimeOnly.value && userStore.user?.role === 'student') {
+    features = features.filter(f => isActivityInFreeSlot(f.properties))
+  }
+
+  return { ...original, features }
+}
+
+/** 判断活动是否在空闲时段内 */
+function isActivityInFreeSlot(props: Record<string, unknown>): boolean {
+  const freeSlots = courseStore.freeSlots
+  if (freeSlots.length === 0) return true
+
+  const startTime = props.startTime as string | null
+  const endTime = props.endTime as string | null
+  if (!startTime || !endTime) return true
+
+  const actStart = new Date(startTime)
+  const actEnd = new Date(endTime)
+  const actDate = formatDateISO(actStart)
+
+  for (const slot of freeSlots) {
+    if (slot.date !== actDate) continue
+
+    const [slotStartH, slotStartM] = slot.startTime.split(':').map(Number)
+    const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number)
+
+    const actStartMin = actStart.getHours() * 60 + actStart.getMinutes()
+    const actEndMin = actEnd.getHours() * 60 + actEnd.getMinutes()
+    const slotStartMin = slotStartH * 60 + slotStartM
+    const slotEndMin = slotEndH * 60 + slotEndM
+
+    // 活动时间完全在空闲时段内
+    if (actStartMin >= slotStartMin && actEndMin <= slotEndMin) {
+      return true
+    }
+  }
+
+  // 活动不在当前周范围内 → 保留（无法判断是否冲突）
+  if (freeSlots.length > 0) {
+    const firstSlotDate = freeSlots[0].date
+    const lastSlotDate = freeSlots[freeSlots.length - 1].date
+    if (actDate < firstSlotDate || actDate > lastSlotDate) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/** 闲时活动开关切换 */
+function handleFreeTimeToggle(val: boolean) {
+  if (!val) {
+    applyCombinedFilter()
+    return
+  }
+
+  // 检查是否导入课表
+  courseStore.init()
+  if (!courseStore.hasImported) {
+    ElMessageBox.confirm(
+      '您还未导入课表，无法使用闲时活动筛选功能。是否前往导入？',
+      '提示',
+      { confirmButtonText: '去导入', cancelButtonText: '取消', type: 'info' }
+    ).then(() => {
+      router.push('/course-schedule')
+      freeTimeOnly.value = false
+    }).catch(() => {
+      freeTimeOnly.value = false
+    })
+    return
+  }
+
+  applyCombinedFilter()
+}
+
+/**
+ * 更新 restoreGeoJSON：恢复全部数据时同步清除筛选状态
+ */
+function _restoreGeoJSONFull() {
+  restoreGeoJSON()
+  activeCategory.value = ''
+  freeTimeOnly.value = false
+}
 
 /** 注册 tap 在地图上的点击清除背板——监听 map click 事件 */
 function registerMapDismiss() {
@@ -270,8 +473,8 @@ function registerMapDismiss() {
     if (selectedBuilding.value) {
       selectedBuilding.value = null
     }
-    // 恢复搜索过滤
-    restoreGeoJSON()
+    // 恢复搜索过滤和分类筛选
+    _restoreGeoJSONFull()
   })
 }
 
@@ -574,6 +777,8 @@ function addRoleHighlightLayer() {
 // ──── 活动数据 ──────────────────────────────────
 
 onMounted(async () => {
+  // 初始化课表数据（供闲时筛选使用）
+  courseStore.init()
   try {
     geojson.value = (await request.get('/map/activities')) as FeatureCollection
     // 缓存原始数据供搜索过滤恢复
@@ -706,7 +911,7 @@ function restoreGeoJSON() {
 
 function clearSearch() {
   searchKeyword.value = ''
-  restoreGeoJSON()
+  _restoreGeoJSONFull()
 }
 
 function onSearchFocus() {
@@ -740,18 +945,38 @@ function onDragEnd(e: PointerEvent) {
   const el = e.currentTarget as HTMLElement
   el.releasePointerCapture(e.pointerId)
 
-  const threshold = 50
-  if (dragMoveY > threshold) {
-    // 向下拖 → 状态降级
-    if (drawerMode.value === 'expanded') {
-      drawerMode.value = 'peek'
-    } else if (drawerMode.value === 'peek') {
-      drawerMode.value = 'collapsed'
-      drawerContent.value = { type: 'search' }
-      restoreGeoJSON()
+  const thresholdSmall = 40
+  const thresholdLarge = 100
+
+  if (dragMoveY > thresholdSmall) {
+    // 向下拖 → 状态逐级降级
+    const downgrade: Record<string, DrawerMode> = {
+      expanded: 'peek',
+      peek: 'half',
+      half: 'quarter',
+      quarter: 'collapsed',
     }
-  } else if (dragMoveY < -threshold && drawerMode.value === 'collapsed') {
-    // 向上拖 → 不自动打开（需要点击活动标记激活）
+    const next = downgrade[drawerMode.value]
+    if (next) {
+      drawerMode.value = next
+      if (next === 'collapsed') {
+        drawerContent.value = { type: 'search' }
+        _restoreGeoJSONFull()
+      }
+    }
+  } else if (dragMoveY < -thresholdSmall) {
+    // 向上拖 → 状态逐级升级（仅 collapsed/quarter 可拖拽升级，peek 以上由点击控制）
+    if (drawerMode.value === 'collapsed') {
+      if (dragMoveY <= -thresholdLarge) {
+        drawerMode.value = 'half'
+      } else {
+        drawerMode.value = 'quarter'
+      }
+    } else if (drawerMode.value === 'quarter') {
+      if (dragMoveY <= -thresholdLarge) {
+        drawerMode.value = 'half'
+      }
+    }
   }
 }
 
@@ -812,6 +1037,14 @@ onUnmounted(() => {
   /* 桌面端：限制宽度避免横跨整个屏幕 */
   max-width: 420px;
   margin: 0 auto;
+}
+
+.activity-drawer--quarter {
+  transform: translateY(60%);
+}
+
+.activity-drawer--half {
+  transform: translateY(35%);
 }
 
 .activity-drawer--peek {
@@ -971,6 +1204,73 @@ onUnmounted(() => {
   font-size: 15px;
   font-weight: 500;
   margin: 0;
+}
+
+/* ──── 分类筛选按钮组 ──────────────────────── */
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.category-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: #f0f2f5;
+  font-size: 13px;
+  color: #606266;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s;
+}
+
+.category-chip:active {
+  transform: scale(0.95);
+}
+
+.category-chip.active {
+  background: #409eff;
+  color: #fff;
+}
+
+.filter-hint {
+  font-size: 12px;
+  color: #67c23a;
+  padding-bottom: 4px;
+}
+
+.filter-week-info {
+  color: #909399;
+  margin-left: 2px;
+}
+
+/* ──── 闲时活动开关 ────────────────────────── */
+.free-time-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0 4px;
+  margin-top: 8px;
+  border-top: 1px solid #ebeef5;
+}
+
+.free-time-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.free-time-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.free-time-desc {
+  font-size: 12px;
+  color: #909399;
 }
 
 /* ──── 热力图 ──────────────────────────────────── */

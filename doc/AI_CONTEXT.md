@@ -172,7 +172,7 @@ DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resou
 /login                  → Login.vue           (guest only)
 /register               → Register.vue        (guest only，含组织者申请选项)
 /                       → Layout.vue
-  ├─ /                  → Map.vue             (活动地图+热力图+GeoServer WFS图层，组合 BaseMap+ActivityLayer+WfsLayer+LayerControl)
+  ├─ /                  → Map.vue             (活动地图+热力图+GeoServer WFS图层+底部上拉背板(分类筛选+闲时活动+活动详情)，组合 BaseMap+ActivityLayer+WfsLayer+LayerControl)
   ├─ /activity/:id      → ActivityDetail.vue  (活动详情+附近推荐)
   ├─ /my-signups        → MySignups.vue       (我的报名)
   ├─ /my-footprint      → MyFootprint.vue     (志愿足迹地图+时间线)
@@ -181,7 +181,7 @@ DDL 脚本：[src/main/resources/db/init.sql](../volunteer-server/src/main/resou
   │   ├─ /admin/create-activity → CreateActivity.vue
   │   └─ /admin/geofence/:id    → GeofenceEdit.vue
   └─ /organizer         → OrganizerDashboard.vue  (role: organizer, admin)
-      ├─ /organizer/create      → CreateActivity.vue
+      ├─ /organizer/create-activity → CreateActivity.vue
       ├─ /organizer/activity/:id → OrganizerActivityDetail.vue
       ├─ /organizer/geofence/:id → GeofenceEdit.vue
       └─ /organizer/profile     → OrganizerProfile.vue
@@ -322,7 +322,7 @@ npm run dev
 | `volunteer-web/src/utils/coordConvert.ts` | WGS-84 ↔ GCJ-02 坐标转换 |
 | `volunteer-web/src/utils/icsParser.ts` | ICS 课表文件解析器（UTC→北京时区+大节映射） |
 | `volunteer-web/src/stores/course.ts` | Pinia 课表状态 + 空闲时段计算 |
-| `volunteer-web/src/views/Map.vue` | 地图主页（BaseMap+ActivityLayer+WfsLayer+热力图+底图切换+建筑开关+建筑点击高亮） |
+| `volunteer-web/src/views/Map.vue` | 地图主页（BaseMap+ActivityLayer+WfsLayer+热力图+底图切换+建筑开关+建筑点击高亮+底部上拉背板五级状态+分类筛选+闲时活动） |
 | `volunteer-web/src/views/GeofenceEdit.vue` | 围栏编辑页 |
 | `volunteer-web/src/views/MyFootprint.vue` | 志愿足迹页 |
 | `volunteer-web/src/views/OrganizerDashboard.vue` | 组织者仪表盘 |
