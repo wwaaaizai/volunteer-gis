@@ -270,3 +270,15 @@ SET @sql_cr = IF(@col_cr = 0,
 PREPARE stmt_cr FROM @sql_cr;
 EXECUTE stmt_cr;
 DEALLOCATE PREPARE stmt_cr;
+
+-- ============================================
+-- Phase 5 增量迁移：活动多点选取（分地点）
+-- ============================================
+SET @col_el = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = 'volunteer_db' AND TABLE_NAME = 'activity' AND COLUMN_NAME = 'extra_locations');
+SET @sql_el = IF(@col_el = 0,
+  'ALTER TABLE activity ADD COLUMN extra_locations JSON COMMENT ''分地点列表 [{name,lng,lat}]''',
+  'SELECT ''Column extra_locations already exists''');
+PREPARE stmt_el FROM @sql_el;
+EXECUTE stmt_el;
+DEALLOCATE PREPARE stmt_el;

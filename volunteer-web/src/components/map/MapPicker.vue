@@ -13,20 +13,6 @@
     <!-- 地图容器 -->
     <div ref="mapEl" class="picker-map" :style="{ height: mapHeight + 'px' }"></div>
 
-    <!-- 坐标信息面板 -->
-    <div class="coord-panel" v-if="pickedLng && pickedLat">
-      <div class="coord-row">
-        <span class="coord-label">地图坐标 (GCJ-02)</span>
-        <span class="coord-val">{{ gcjLng.toFixed(6) }}, {{ gcjLat.toFixed(6) }}</span>
-        <el-button link size="small" @click="copyCoord('gcj')">复制</el-button>
-      </div>
-      <div class="coord-row">
-        <span class="coord-label">GPS 坐标 (WGS-84)</span>
-        <span class="coord-val">{{ pickedLng.toFixed(6) }}, {{ pickedLat.toFixed(6) }}</span>
-        <el-button link size="small" @click="copyCoord('wgs')">复制</el-button>
-      </div>
-    </div>
-
     <!-- 按钮行 -->
     <div class="picker-actions">
       <el-button size="small" @click="clearPick" :disabled="!pickedLng">清除选点</el-button>
@@ -59,8 +45,10 @@ const props = withDefaults(defineProps<{
   showGeofenceBtn?: boolean
   activityId?: number
   geofenceGeojson?: string
+  extraPoints?: { name: string; lng: number; lat: number }[]
 }>(), {
   mapHeight: 400,
+  extraPoints: () => [],
 })
 
 const emit = defineEmits<{
@@ -164,6 +152,47 @@ function goToGeofence() {
   }
 }
 
+/** 在地图上显示所有分地点标记 */
+function showExtraPointMarkers() {
+  if (!map || !map.loaded()) return
+  const sourceId = 'picker-extra-points'
+  const features = props.extraPoints.map((p, i) => ({
+    type: 'Feature' as const,
+    geometry: { type: 'Point' as const, coordinates: wgs84ToGcj02(p.lng, p.lat) },
+    properties: { name: p.name, index: i + 1 },
+  }))
+  const geojson = { type: 'FeatureCollection' as const, features }
+  if (map.getSource(sourceId)) {
+    (map.getSource(sourceId) as any).setData(geojson)
+  } else {
+    map.addSource(sourceId, { type: 'geojson', data: geojson as any })
+    map.addLayer({
+      id: 'picker-extra-points-layer', type: 'circle', source: sourceId,
+      paint: {
+        'circle-radius': 8,
+        'circle-color': ['match', ['get', 'index'], 1, '#67c23a', 2, '#e6a23c', 3, '#f56c6c', '#909399'],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#fff',
+      },
+    })
+    map.addLayer({
+      id: 'picker-extra-labels', type: 'symbol', source: sourceId,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 11,
+        'text-offset': [0, -1.5],
+        'text-anchor': 'bottom',
+      },
+      paint: { 'text-color': '#303133', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
+    })
+  }
+}
+
+// 同步分地点
+watch(() => props.extraPoints, () => {
+  if (map?.loaded()) showExtraPointMarkers()
+}, { deep: true })
+
 // 同步外部 model 值
 watch(() => [props.modelLng, props.modelLat], ([lng, lat]) => {
   if (lng && lat) {
@@ -213,6 +242,10 @@ onMounted(() => {
       if (props.geofenceGeojson) {
         showGeofenceOverlay(props.geofenceGeojson)
       }
+      // 加载分地点标记
+      if (props.extraPoints.length > 0) {
+        showExtraPointMarkers()
+      }
     })
 
     map.on('error', (e) => {
@@ -233,6 +266,7 @@ onUnmounted(() => {
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   overflow: hidden;
+  width: 100%;
 }
 .picker-hint {
   display: flex;

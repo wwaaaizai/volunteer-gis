@@ -132,6 +132,44 @@ public class MapController {
         return Result.ok(mapService.getHeatmapData(category, months));
     }
 
+    // ──── 缓冲区分析 ──────────────────────────────────
+
+    /** 缓冲区分析：返回指定半径内的活动及其报名人数 */
+    @GetMapping("/buffer")
+    public Result<Map<String, Object>> bufferAnalysis(
+            @RequestParam double lng, @RequestParam double lat,
+            @RequestParam(defaultValue = "500") double radius) {
+        return Result.ok(mapService.bufferAnalysis(lng, lat, radius));
+    }
+
+    // ──── 覆盖率分析 ──────────────────────────────────
+
+    /** 覆盖率分析：网格统计校区内各区域的活动覆盖 */
+    @GetMapping("/coverage")
+    public Result<Map<String, Object>> coverageAnalysis(
+            @RequestParam(defaultValue = "8") int gridSize) {
+        return Result.ok(mapService.coverageAnalysis(gridSize));
+    }
+
+    // ──── 时段空间分布 ───────────────────────────────
+
+    /** 时段空间分布：按月份返回活动分布 */
+    @GetMapping("/timeline")
+    public Result<FeatureCollection> timelineAnalysis(
+            @RequestParam(required = false) String yearMonth) {
+        return Result.ok(mapService.timelineAnalysis(yearMonth));
+    }
+
+    // ──── 集合点推荐 ─────────────────────────────────
+
+    /** 集合点推荐：对活动报名学生签到坐标聚类，推荐最优集合点 */
+    @GetMapping("/cluster-meeting")
+    public Result<List<Map<String, Object>>> clusterMeeting(
+            @RequestParam Long activityId,
+            @RequestParam(defaultValue = "3") int k) {
+        return Result.ok(mapService.clusterMeeting(activityId, k));
+    }
+
     // ──── 工具方法 ──────────────────────────────────────
 
     private Map<String, String> layer(String id, String name, String geometryType, String desc) {

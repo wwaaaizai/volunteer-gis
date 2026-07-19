@@ -55,6 +55,12 @@ const routes = [
         meta: { title: '志愿足迹' },
       },
       {
+        path: 'gis-analysis',
+        name: 'GisAnalysis',
+        component: () => import('@/views/GisAnalysis.vue'),
+        meta: { title: 'GIS空间分析' },
+      },
+      {
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/Admin.vue'),

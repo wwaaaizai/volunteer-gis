@@ -56,25 +56,9 @@
         <el-form-item label="活动标题" prop="title">
           <div class="inline-with-ai">
             <el-input v-model="form.title" placeholder="请输入活动标题" style="flex:1" />
-            <el-button
-              type="warning" plain size="small"
-              :loading="aiGenerating === 'title'"
-              :disabled="!!aiGenerating"
-              @click="aiGenerateDescription"
-            >
-              {{ aiGenerating === 'title' ? '⏳ AI 生成中...' : '🤖 AI 生成' }}
+            <el-button type="warning" plain size="small" @click="openAiDialog">
+              🤖 AI 生成
             </el-button>
-          </div>
-        </el-form-item>
-
-        <!-- AI 关键词输入（点击 AI 后弹出） -->
-        <el-form-item label="AI 关键词" v-if="showAiKeyword">
-          <div class="inline-with-ai">
-            <el-input v-model="aiKeyword" placeholder="输入关键词，如：图书馆 整理 周末" style="flex:1" />
-            <el-button type="primary" size="small" :loading="aiGenerating === 'keyword'" @click="doAiGenerate">
-              生成
-            </el-button>
-            <el-button size="small" @click="showAiKeyword = false">取消</el-button>
           </div>
         </el-form-item>
 
@@ -107,54 +91,57 @@
         <!-- 活动描述 + AI 按钮 -->
         <el-form-item label="活动描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请描述活动内容" />
-          <div style="margin-top:4px;text-align:right">
-            <el-button type="warning" plain size="small"
-              :loading="aiGenerating === 'desc'"
-              :disabled="!!aiGenerating"
-              @click="aiGenerateDescription"
-            >🤖 AI 生成描述</el-button>
-          </div>
         </el-form-item>
 
         <!-- 活动地点 -->
         <el-form-item label="活动地点" prop="locationName">
-          <el-input v-model="form.locationName" placeholder="如：博学楼101" />
-        </el-form-item>
-
-        <!-- 地图选点 -->
-        <el-form-item label="地图选点" prop="longitude">
-          <MapPicker
-            ref="mapPickerRef"
-            :modelLng="isEdit ? form.longitude : undefined"
-            :modelLat="isEdit ? form.latitude : undefined"
-            @update="onMapPick"
+          <el-autocomplete
+            v-model="form.locationName"
+            :fetch-suggestions="queryPoiSuggestions"
+            @select="onPoiSelect"
+            @focus="onLocationFocus"
+            @input="onLocationInput"
+            placeholder="如：博学楼101（输入名称自动定位到地图）"
+            style="width:100%"
+            clearable
           />
         </el-form-item>
 
-        <!-- 经纬度 -->
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="经度" prop="longitude">
-              <el-input-number v-model="form.longitude" :precision="6" :step="0.001" style="width:100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="纬度" prop="latitude">
-              <el-input-number v-model="form.latitude" :precision="6" :step="0.001" style="width:100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <!-- 地图选点 -->
+        <el-form-item label="地图选点" prop="longitude" class="map-picker-form-item">
+          <MapPicker
+            ref="mapPickerRef"
+            :modelLng="form.longitude"
+            :modelLat="form.latitude"
+            :mapHeight="340"
+            @update="onMapPick"
+          />
+          <!-- 分地点列表 -->
+          <div class="extra-locations" v-if="extraLocations.length > 0">
+            <div class="extra-loc-title">📌 分地点（共 {{ extraLocations.length }} 处）</div>
+            <div v-for="(loc, i) in extraLocations" :key="i" class="extra-loc-row">
+              <el-input v-model="loc.name" placeholder="地点名称" size="small" style="width:160px" />
+              <span class="extra-loc-coord">{{ loc.lng.toFixed(6) }}, {{ loc.lat.toFixed(6) }}</span>
+              <el-button size="small" type="danger" text @click="removeExtraLoc(i)">删除</el-button>
+            </div>
+          </div>
+          <div class="extra-loc-add" v-if="form.longitude && form.latitude">
+            <el-button size="small" @click="addExtraLoc">
+              + 添加分地点（如活动在多个位置开展）
+            </el-button>
+          </div>
+        </el-form-item>
 
         <!-- 时间 -->
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="开始时间" prop="startTime">
-              <el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+              <el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" @change="calcVolunteerHours" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间" prop="endTime">
-              <el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+              <el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" @change="calcVolunteerHours" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -168,62 +155,29 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="志愿时长(h)">
-              <el-input-number v-model="form.volunteerHours" :min="0" :max="999" :precision="1" style="width:100%" />
+              <el-input-number v-model="form.volunteerHours" :min="0" :max="999" :precision="1" :step="0.5" style="width:100%" @change="onHoursManualChange" />
+              <span class="form-tip" style="font-size:11px;color:#67c23a" v-if="form.startTime && form.endTime && !manualHours">已自动计算</span>
             </el-form-item>
           </el-col>
         </el-row>
 
         <!-- 面向对象 -->
         <el-form-item label="面向年级">
-          <el-input v-model="form.targetGrade" placeholder="如：2023,2024（逗号分隔，留空或填ALL表示不限）" />
+          <el-select v-model="selectedGrades" multiple placeholder="不限年级（可多选）" style="width:100%" clearable @change="onGradesChange">
+            <el-option v-for="g in ['2022','2023','2024','2025']" :key="g" :label="g+'级'" :value="g" />
+          </el-select>
         </el-form-item>
         <el-form-item label="面向院系">
-          <el-input v-model="form.targetCollege" placeholder="如：计算机学院,矿业学院（逗号分隔，留空或填ALL表示不限）" />
+          <el-select v-model="selectedColleges" multiple placeholder="不限院系（可多选）" style="width:100%" clearable @change="onCollegesChange">
+            <el-option v-for="c in collegeOptions" :key="c" :label="c" :value="c" />
+          </el-select>
         </el-form-item>
 
         <!-- 归属组织 -->
         <el-form-item label="归属组织">
-          <el-input v-model="form.organizationName" placeholder="如：校团委志愿者协会" />
-        </el-form-item>
-
-        <!-- 封面：上传 + AI 生成 -->
-        <el-form-item label="封面图片">
-          <div class="cover-actions">
-            <el-upload
-              :action="uploadUrl" :headers="uploadHeaders"
-              :on-success="onUploadSuccess" :on-error="onUploadError"
-              :before-upload="beforeUpload" :show-file-list="false" accept="image/*"
-            >
-              <el-button :loading="uploading">
-                {{ form.coverImage ? '重新上传' : '📷 上传封面图' }}
-              </el-button>
-            </el-upload>
-            <el-button
-              type="warning" plain
-              :loading="aiGenerating === 'cover'"
-              :disabled="!!aiGenerating"
-              @click="aiGenerateCover"
-            >🤖 AI 生成封面</el-button>
-          </div>
-
-          <!-- AI 封面候选面板 -->
-          <div class="ai-cover-panel" v-if="aiCovers.length > 0">
-            <div class="ai-cover-title">AI 生成候选（点击选择）</div>
-            <div class="ai-cover-list">
-              <div
-                v-for="(cover, i) in aiCovers" :key="i"
-                class="ai-cover-item"
-                :class="{ selected: selectedAiCover === i }"
-                @click="selectAiCover(i)"
-              >
-                <img :src="cover" alt="封面候选" />
-                <span>{{ i + 1 }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 当前封面预览 -->
-          <img v-if="form.coverImage" :src="form.coverImage" class="cover-preview" alt="封面预览" />
+          <el-select v-model="selectedOrgs" multiple placeholder="选择合办学院青协（可多选）" style="width:100%" clearable @change="onOrgsChange">
+            <el-option v-for="o in orgOptions" :key="o" :label="o" :value="o" />
+          </el-select>
         </el-form-item>
 
         <!-- 保存为模板 -->
@@ -243,10 +197,70 @@
           <el-button type="primary" @click="handleSubmit" :loading="submitting">
             {{ isEdit ? '保存修改' : '创建活动' }}
           </el-button>
+          <el-button type="success" @click="showPreview = true">👁️ 预览</el-button>
           <el-button @click="goBack">返回</el-button>
         </el-form-item>
 
       </el-form>
+
+      <!-- AI 生成对话框 -->
+      <el-dialog v-model="showAiDialog" title="🤖 AI 生成活动文案" width="600px" top="25vh">
+        <div class="ai-dialog-keyword">
+          <el-input v-model="aiKeyword" placeholder="输入关键词，如：图书馆整理 周末" size="large" @keyup.enter="doAiGenerate">
+            <template #append>
+              <el-button :loading="aiGenerating" @click="doAiGenerate" type="primary">生成</el-button>
+            </template>
+          </el-input>
+        </div>
+        <div v-if="aiGenerated" style="margin-top:16px">
+          <el-divider content-position="left">生成结果（可修改）</el-divider>
+          <el-form label-width="80px" size="small">
+            <el-form-item label="活动标题">
+              <el-input v-model="aiResult.title" />
+            </el-form-item>
+            <el-form-item label="活动描述">
+              <el-input v-model="aiResult.desc" type="textarea" :rows="6" />
+            </el-form-item>
+          </el-form>
+          <div style="text-align:right;margin-top:8px">
+            <el-button size="small" @click="doAiGenerate" :loading="aiGenerating">🔄 重新生成</el-button>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="showAiDialog = false">取消</el-button>
+          <el-button type="primary" @click="applyAiResult" :disabled="!aiGenerated">✓ 使用此内容</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 预览对话框 -->
+      <el-dialog v-model="showPreview" title="活动预览（学生视角）" width="700px" top="5vh">
+        <el-card shadow="never">
+          <h3 style="margin-top:0">{{ form.title || '未填写标题' }}</h3>
+          <el-tag :type="form.status === 'draft' ? 'info' : 'success'" size="small" style="margin-bottom:12px">
+            {{ form.status === 'draft' ? '草稿' : '已发布' }}
+          </el-tag>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="地点">{{ form.locationName || '未填写' }}</el-descriptions-item>
+            <el-descriptions-item label="分类">{{ categoryLabel(form.category) }}</el-descriptions-item>
+            <el-descriptions-item label="开始时间">{{ form.startTime || '未设定' }}</el-descriptions-item>
+            <el-descriptions-item label="结束时间">{{ form.endTime || '未设定' }}</el-descriptions-item>
+            <el-descriptions-item label="报名上限">{{ form.maxParticipants }} 人</el-descriptions-item>
+            <el-descriptions-item label="标签">
+              <el-tag v-for="t in form.tags" :key="t" size="small" style="margin-right:4px">{{ t }}</el-tag>
+              <span v-if="form.tags.length===0" style="color:#909399">无</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="分地点" :span="2" v-if="extraLocations.length > 0">
+              <span v-for="(loc,i) in extraLocations" :key="i" style="margin-right:12px">
+                📍{{ loc.name }}
+              </span>
+            </el-descriptions-item>
+          </el-descriptions>
+          <div style="margin-top:16px">
+            <h4>活动描述</h4>
+            <p style="white-space:pre-wrap;color:#606266">{{ form.description || '未填写描述' }}</p>
+          </div>
+        </el-card>
+      </el-dialog>
     </el-card>
   </div>
 </template>
@@ -258,6 +272,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy } from '@element-plus/icons-vue'
 import request from '@/api'
 import { DEFAULT_CENTER } from '@/config/map'
+import { findNearestPoi, searchPoi } from '@/utils/campusPoi'
+import type { CampusPoi } from '@/utils/campusPoi'
 import MapPicker from '@/components/map/MapPicker.vue'
 
 const router = useRouter()
@@ -265,8 +281,6 @@ const route = useRoute()
 const formRef = ref()
 const mapPickerRef = ref<InstanceType<typeof MapPicker>>()
 const submitting = ref(false)
-const uploading = ref(false)
-
 // 标签
 const tagInputVisible = ref(false)
 const tagInputValue = ref('')
@@ -281,13 +295,22 @@ const saveAsTemplate = ref(false)
 const templateName = ref('')
 
 // AI
-const aiGenerating = ref<string | null>(null)
-const showAiKeyword = ref(false)
+const showAiDialog = ref(false)
+const aiGenerating = ref(false)
+const aiGenerated = ref(false)
 const aiKeyword = ref('')
-const aiCovers = ref<string[]>([])
-const selectedAiCover = ref(-1)
+const aiResult = reactive({ title: '', desc: '' })
 
 const isEdit = computed(() => !!route.query.edit)
+const showPreview = ref(false)
+
+function categoryLabel(cat: string) {
+  const map: Record<string, string> = {
+    environmental: '环保', support: '助学', education: '支教',
+    community: '社区', campus: '校园', other: '其他',
+  }
+  return map[cat] || cat || '未分类'
+}
 
 const categoryMap: Record<string, string> = {
   environmental: '环保', support: '助学', education: '支教',
@@ -300,7 +323,6 @@ const form = reactive({
   startTime: '', endTime: '', maxParticipants: 50,
   volunteerHours: undefined as number | undefined,
   targetGrade: '', targetCollege: '', organizationName: '',
-  coverImage: '',
 })
 
 const rules = {
@@ -312,13 +334,6 @@ const rules = {
 }
 
 /** 上传地址（Vite 代理到后端） */
-const uploadUrl = '/api/upload/image'
-
-/** 上传请求头（附带 Token） */
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-}))
-
 // ─── 模板 ───
 async function loadTemplates() {
   try {
@@ -334,11 +349,19 @@ function applyTemplate(t: any) {
   form.category = t.category || ''
   form.tags = t.tags ? t.tags.split(',').filter(Boolean) : []
   form.locationName = t.locationName || ''
+  // 模板有坐标 → 地图自动定位
+  if (t.longitude && t.latitude) {
+    form.longitude = t.longitude
+    form.latitude = t.latitude
+  }
   form.maxParticipants = t.maxParticipants || 50
   form.volunteerHours = t.volunteerHours ?? undefined
   form.targetGrade = t.targetGrade || ''
   form.targetCollege = t.targetCollege || ''
+  selectedGrades.value = t.targetGrade ? t.targetGrade.split(',').filter(Boolean) : []
+  selectedColleges.value = t.targetCollege ? t.targetCollege.split(',').filter(Boolean) : []
   form.organizationName = t.organizationName || ''
+  selectedOrgs.value = t.organizationName ? t.organizationName.split(',').filter(Boolean) : []
   showTemplatePanel.value = false
   ElMessage.success(`已应用模板：${t.name}`)
 }
@@ -353,12 +376,12 @@ async function deleteTemplate(id: number) {
 }
 
 // ─── AI ───
-function aiGenerateDescription() {
-  if (!form.title.trim()) {
-    ElMessage.warning('请先输入活动标题或关键词')
-  }
-  showAiKeyword.value = true
-  if (form.title) aiKeyword.value = form.title
+function openAiDialog() {
+  showAiDialog.value = true
+  aiKeyword.value = form.title || ''
+  aiGenerated.value = false
+  aiResult.title = ''
+  aiResult.desc = ''
 }
 
 async function doAiGenerate() {
@@ -366,44 +389,29 @@ async function doAiGenerate() {
     ElMessage.warning('请输入关键词')
     return
   }
-  aiGenerating.value = 'keyword'
+  aiGenerating.value = true
   try {
     const res: any = await request.post('/ai/generate-description', { keyword: aiKeyword.value })
-    form.title = res.title || form.title
-    form.description = res.description || form.description
-    showAiKeyword.value = false
-    aiKeyword.value = ''
-    ElMessage.success('AI 生成完成，请审核修改后保存')
+    aiResult.title = res.title || ''
+    aiResult.desc = res.description || ''
+    aiGenerated.value = true
   } catch {
     ElMessage.error('AI 生成失败')
   } finally {
-    aiGenerating.value = null
+    aiGenerating.value = false
   }
 }
 
-async function aiGenerateCover() {
-  const prompt = form.title || aiKeyword.value || '志愿活动'
-  aiGenerating.value = 'cover'
-  try {
-    const res: any = await request.post('/ai/generate-cover', { prompt })
-    aiCovers.value = res.covers || []
-    selectedAiCover.value = -1
-    if (aiCovers.value.length > 0) ElMessage.success('封面生成完成，请选择一张')
-  } catch {
-    ElMessage.error('AI 封面生成失败')
-  } finally {
-    aiGenerating.value = null
-  }
-}
-
-function selectAiCover(i: number) {
-  selectedAiCover.value = i
-  form.coverImage = aiCovers.value[i]
+function applyAiResult() {
+  if (aiResult.title) form.title = aiResult.title
+  if (aiResult.desc) form.description = aiResult.desc
+  showAiDialog.value = false
+  ElMessage.success('AI 内容已应用')
 }
 
 // ─── 编辑模式 ───
 onMounted(async () => {
-  loadTemplates()
+  try { loadTemplates() } catch { /* templates optional */ }
   const editId = route.query.edit
   if (!editId) return
   try {
@@ -419,18 +427,165 @@ onMounted(async () => {
       volunteerHours: data.volunteerHours ?? undefined,
       targetGrade: data.targetGrade || '', targetCollege: data.targetCollege || '',
       organizationName: data.organizationName || '',
-      coverImage: data.coverImage || '',
     })
+    selectedGrades.value = data.targetGrade ? data.targetGrade.split(',').filter(Boolean) : []
+    selectedColleges.value = data.targetCollege ? data.targetCollege.split(',').filter(Boolean) : []
+    selectedOrgs.value = data.organizationName ? data.organizationName.split(',').filter(Boolean) : []
+    // 回填分地点
+    if (data.extraLocations) {
+      try {
+        extraLocations.value = JSON.parse(data.extraLocations)
+      } catch { extraLocations.value = [] }
+    }
   } catch {
     ElMessage.error('加载活动数据失败')
     router.back()
   }
 })
 
+// ─── 归属组织多选 ───
+const orgOptions = [
+  '环测学院青协', '计算机学院青协', '矿业学院青协', '机电学院青协',
+  '信控学院青协', '化工学院青协', '材料与物理学院青协', '力学与土木学院青协',
+  '经管学院青协', '公管学院青协', '建筑学院青协', '体育学院青协',
+  '校团委志愿者协会', '校学生会志愿部', '图书馆志愿者服务队',
+]
+const selectedOrgs = ref<string[]>([])
+function onOrgsChange(vals: string[]) { form.organizationName = vals.join(',') }
+
+// ─── 归属组织预设（保留兼容）───
+const ORG_LIST = [
+  '环测学院志愿者协会', '计算机学院志愿者协会', '矿业学院志愿者协会',
+  '机电学院志愿者协会', '信控学院志愿者协会', '化工学院志愿者协会',
+  '材料与物理学院志愿者协会', '力学与土木学院志愿者协会',
+  '经管学院志愿者协会', '公共管理学院志愿者协会', '建筑学院志愿者协会',
+  '资源学院志愿者协会', '体育学院志愿者协会',
+  '校团委志愿者协会', '校学生会志愿部', '图书馆志愿者服务队',
+]
+function queryOrgSuggestions(kw: string, cb: (list: { value: string }[]) => void) {
+  if (!kw) { cb(ORG_LIST.map(v => ({ value: v }))); return }
+  cb(ORG_LIST.filter(v => v.includes(kw)).map(v => ({ value: v })))
+}
+
+// ─── 面向年级/院系多选 ───
+const collegeOptions = [
+  '矿业学院', '机电学院', '信控学院', '化工学院', '环测学院',
+  '资源学院', '计算机学院', '材料与物理学院', '力学与土木学院',
+  '经管学院', '公共管理学院', '建筑学院', '体育学院',
+  '外文学院', '数学学院', '人文与艺术学院', '国际学院',
+]
+const selectedGrades = ref<string[]>([])
+const selectedColleges = ref<string[]>([])
+function onGradesChange(vals: string[]) { form.targetGrade = vals.join(',') }
+function onCollegesChange(vals: string[]) { form.targetCollege = vals.join(',') }
+
+// ─── 志愿时长自动计算 ───
+const manualHours = ref(false)
+function calcVolunteerHours() {
+  if (!form.startTime || !form.endTime) return
+  if (manualHours.value) return
+  const start = new Date(form.startTime).getTime()
+  const end = new Date(form.endTime).getTime()
+  if (end <= start) return
+  let hours = (end - start) / (1000 * 60 * 60)
+  // 凑整：>=0.25→0.5, >=0.5→0.5, >=0.75→1.0
+  const frac = hours - Math.floor(hours)
+  if (frac < 0.25) hours = Math.floor(hours) + 0.5
+  else if (frac < 0.75) hours = Math.floor(hours) + 0.5
+  else hours = Math.floor(hours) + 1.0
+  hours = Math.max(0.5, hours)
+  form.volunteerHours = hours
+}
+function onHoursManualChange() {
+  manualHours.value = true
+}
+
+// ─── POI 地点搜索 ───
+function queryPoiSuggestions(keyword: string, cb: (list: { value: string }[]) => void) {
+  if (!keyword || keyword.length < 1) { cb([]); return }
+  // 多段输入时只搜最后一段（如"图书馆、博"→搜"博"）
+  const parts = keyword.split('、')
+  const lastPart = parts[parts.length - 1].trim()
+  const searchKey = lastPart || keyword
+  const results = searchPoi(searchKey).slice(0, 8).map(p => ({ value: p.name }))
+  cb(results)
+}
+
+// ─── POI 选择：输入地名 → 地图自动定位 ───
+let lastLocationName = ''
+function onPoiSelect(item: { value: string }) {
+  const results = searchPoi(item.value)
+  if (results.length === 0) return
+  const poi = results[0]
+  form.longitude = poi.lng
+  form.latitude = poi.lat
+  // 还原选择前的内容，替换最后一段
+  const parts = lastLocationName ? lastLocationName.split('、') : []
+  if (parts.length > 0) {
+    parts[parts.length - 1] = poi.name
+    form.locationName = parts.join('、')
+  } else {
+    form.locationName = poi.name
+  }
+  lastLocationName = form.locationName
+  // 添加分地点
+  if (!extraLocations.value.some(loc => loc.name === poi.name)) {
+    extraLocations.value.push({ name: poi.name, lng: poi.lng, lat: poi.lat })
+  }
+}
+// 每次输入变化前暂存
+function onLocationFocus() {
+  lastLocationName = form.locationName
+}
+function onLocationInput() {
+  // 手工输入时更新暂存值（非下拉选中时）
+  setTimeout(() => { lastLocationName = form.locationName }, 0)
+}
+
 // ─── 地图 ───
 function onMapPick(lng: number, lat: number) {
   form.longitude = lng
   form.latitude = lat
+  // POI 自动识别：只在用户未手动输入时自动填充
+  const poi = findNearestPoi(lng, lat)
+  if (poi && !form.locationName) {
+    form.locationName = poi.name
+  }
+}
+
+// ─── 多点选取 ───
+interface ExtraLocation { name: string; lng: number; lat: number }
+const extraLocations = ref<ExtraLocation[]>([])
+
+function syncLocationName() {
+  const seen = new Set<string>()
+  const names: string[] = []
+  // 主地点 POI
+  const mainPoi = findNearestPoi(form.longitude, form.latitude)
+  if (mainPoi && !seen.has(mainPoi.name)) { names.push(mainPoi.name); seen.add(mainPoi.name) }
+  // 分地点（去重）
+  for (const loc of extraLocations.value) {
+    if (!seen.has(loc.name)) { names.push(loc.name); seen.add(loc.name) }
+  }
+  form.locationName = names.join('、') || form.locationName
+}
+
+function addExtraLoc() {
+  if (!form.longitude || !form.latitude) return
+  const poi = findNearestPoi(form.longitude, form.latitude)
+  console.log('[POI] 点击坐标:', form.longitude.toFixed(6), form.latitude.toFixed(6), '→ 匹配:', poi?.name || '无')
+  const name = poi ? poi.name : `分地点${extraLocations.value.length + 1}`
+  extraLocations.value.push({
+    name,
+    lng: form.longitude,
+    lat: form.latitude,
+  })
+  syncLocationName()
+}
+
+function removeExtraLoc(i: number) {
+  extraLocations.value.splice(i, 1)
+  syncLocationName()
 }
 
 // ─── 标签 ───
@@ -448,23 +603,6 @@ function removeTag(tag: string) {
   form.tags = form.tags.filter(t => t !== tag)
 }
 
-// ─── 上传 ───
-function beforeUpload(file: File) {
-  if (!file.type.startsWith('image/')) { ElMessage.error('仅支持图片格式'); return false }
-  if (file.size / 1024 / 1024 > 5) { ElMessage.error('图片大小不能超过 5MB'); return false }
-  uploading.value = true
-  return true
-}
-function onUploadSuccess(response: any) {
-  uploading.value = false
-  form.coverImage = response.data?.url || response.url || ''
-  ElMessage.success('封面上传成功')
-}
-function onUploadError() {
-  uploading.value = false
-  ElMessage.error('封面上传失败')
-}
-
 // ─── 提交 ───
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
@@ -477,7 +615,10 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    const payload = { ...form, tags: form.tags.join(',') }
+    const payload: any = { ...form, tags: form.tags.join(',') }
+    if (extraLocations.value.length > 0) {
+      payload.extraLocations = JSON.stringify(extraLocations.value)
+    }
 
     if (isEdit.value) {
       await request.put(`/activities/${route.query.edit}`, payload)
@@ -512,9 +653,9 @@ function goBack() {
 
 <style scoped>
 .create-activity {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 20px auto;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 .template-bar {
   display: flex;
@@ -559,56 +700,37 @@ function goBack() {
   align-items: center;
   width: 100%;
 }
-.cover-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.map-picker-form-item :deep(.el-form-item__content) {
+  width: 100%;
   flex-wrap: wrap;
 }
-.ai-cover-panel {
-  margin-top: 10px;
+.extra-locations {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
   border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  padding: 12px;
-  background: #fafafa;
 }
-.ai-cover-title {
+.extra-loc-title {
   font-size: 13px;
   color: #606266;
-  margin-bottom: 8px;
+  font-weight: 500;
+  margin-bottom: 6px;
 }
-.ai-cover-list {
+.extra-loc-row {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
-.ai-cover-item {
-  width: 130px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  overflow: hidden;
-  text-align: center;
-  transition: border 0.2s;
-}
-.ai-cover-item.selected {
-  border-color: #409EFF;
-}
-.ai-cover-item img {
-  width: 100%;
-  height: 65px;
-  object-fit: cover;
-  display: block;
-}
-.ai-cover-item span {
-  font-size: 11px;
+.extra-loc-coord {
+  font-size: 12px;
   color: #909399;
-  display: block;
-  padding: 2px 0;
+  font-family: monospace;
 }
-.cover-preview {
-  width: 200px;
-  margin-top: 10px;
-  border-radius: 4px;
-  border: 1px solid #e4e7ed;
+.extra-loc-add {
+  width: 100%;
+  margin-top: 6px;
 }
 </style>

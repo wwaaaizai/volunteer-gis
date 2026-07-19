@@ -6,6 +6,7 @@ spring:
     name: volunteer-server
   jackson:
     time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/volunteer_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
@@ -41,6 +42,8 @@ volunteer:
   upload:
     path: ./uploads
 
-# AI 配置（Pollinations.ai 免费服务，无需 API Key，同学拉取即用）
+# AI 配置（智谱 GLM API）
 ai:
-  provider: pollinations                   # pollinations（免费）/ deepseek / ollama
+  provider: zhipu
+  api-key: 371b384b8a254747a2fa0a22fdf13274.x3tdwpP0vqziMb7a
+  model: glm-4-flash

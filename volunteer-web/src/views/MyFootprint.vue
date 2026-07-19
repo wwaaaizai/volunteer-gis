@@ -10,6 +10,22 @@
 
     <BaseMap ref="baseMapRef" :center="mapCenter" :zoom="14" style="height: 520px; border-radius: 8px; margin-top:12px" />
 
+    <!-- 选中足迹详情卡片 -->
+    <el-card v-if="selectedFp" class="fp-detail-card">
+      <template #header>
+        <span>{{ selectedFp.activityTitle }}</span>
+        <el-button size="small" text style="float:right" @click="selectedFp = null">✕</el-button>
+      </template>
+      <el-descriptions :column="2" size="small" border>
+        <el-descriptions-item label="活动ID">{{ selectedFp.activityId }}</el-descriptions-item>
+        <el-descriptions-item label="签到时间">{{ selectedFp.signInTime || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="志愿时长">{{ selectedFp.volunteerHours != null ? selectedFp.volunteerHours + 'h' : '仅签到' }}</el-descriptions-item>
+        <el-descriptions-item label="坐标(WGS-84)">
+          {{ selectedFp.lng.toFixed(5) }}, {{ selectedFp.lat.toFixed(5) }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
     <el-card style="margin-top: 16px" v-if="footprints.length > 0">
       <template #header>足迹时间线</template>
       <el-timeline>
@@ -51,6 +67,7 @@ interface Footprint {
 const baseMapRef = ref<InstanceType<typeof BaseMap>>()
 const footprints = ref<Footprint[]>([])
 const mapCenter = ref<[number, number]>(DEFAULT_CENTER)
+const selectedFp = ref<Footprint | null>(null)
 
 const uniqueLocations = computed(() =>
   new Set(footprints.value.map(f => `${f.lng},${f.lat}`)).size
@@ -92,12 +109,21 @@ function addFootprintLayer() {
     })
   }
 
-  // Point markers
+  // Point markers with full footprint data for click interaction
   gcjPoints.forEach((p, i) => {
+    const fp = footprints.value[i]
     geojson.features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-      properties: { title: p.title, index: i },
+      properties: {
+        title: fp.activityTitle,
+        index: i,
+        activityId: fp.activityId,
+        signInTime: fp.signInTime,
+        volunteerHours: fp.volunteerHours,
+        lng: fp.lng,
+        lat: fp.lat,
+      },
     })
   })
 
@@ -133,6 +159,23 @@ function drawLayers(map: any, geojson: any) {
       },
       filter: ['==', '$type', 'Point'],
     })
+
+    // Click handler: show footprint detail
+    map.on('click', FP_POINTS, (e: any) => {
+      const props = e.features?.[0]?.properties
+      if (props) {
+        selectedFp.value = {
+          activityId: props.activityId,
+          activityTitle: props.title,
+          lng: props.lng,
+          lat: props.lat,
+          signInTime: props.signInTime,
+          volunteerHours: props.volunteerHours,
+        }
+      }
+    })
+    map.on('mouseenter', FP_POINTS, () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', FP_POINTS, () => { map.getCanvas().style.cursor = '' })
   }
 }
 
@@ -160,5 +203,9 @@ onMounted(async () => {
   gap: 12px;
   margin-top: 12px;
   flex-wrap: wrap;
+}
+.fp-detail-card {
+  margin-top: 12px;
+  border-left: 4px solid #409eff;
 }
 </style>

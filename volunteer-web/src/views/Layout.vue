@@ -94,6 +94,7 @@ const navItems = computed<NavItem[]>(() => {
   if (role === 'admin') return [
     { index: '/', path: '/', label: '活动地图' },
     { index: '/admin', path: '/admin', label: '后台管理' },
+    { index: '/organizer', path: '/organizer', label: '活动管理' },
   ]
   return [{ index: '/', path: '/', label: '活动地图' }]
 })
